@@ -13,8 +13,11 @@ npm run lint
 echo "==> format:check"
 npm run format:check
 
-echo "==> test"
+echo "==> test (unit)"
 npm test
+
+echo "==> test:functional (black-box e2e — runs the real built artifacts)"
+npm run test:functional
 
 echo ""
 echo "✅ ALL GATES PASSED"
