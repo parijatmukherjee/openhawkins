@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { detectPlatform } from "../../src/os/platform.js";
+import { detectPlatform, freeDiskBytes } from "../../src/os/platform.js";
+import { tmpdir } from "node:os";
 
 describe("detectPlatform", () => {
   it("maps the current process.platform to a known os", () => {
@@ -14,5 +15,13 @@ describe("detectPlatform", () => {
     expect(detectPlatform("darwin").os).toBe("macos");
     expect(detectPlatform("linux").os).toBe("linux");
     expect(detectPlatform("linux").shell).toBe("bash");
+  });
+});
+
+describe("freeDiskBytes", () => {
+  it("returns a positive integer number of bytes for the temp dir", async () => {
+    const bytes = await freeDiskBytes(tmpdir());
+    expect(Number.isInteger(bytes)).toBe(true);
+    expect(bytes).toBeGreaterThan(0);
   });
 });
