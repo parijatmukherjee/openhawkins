@@ -28,6 +28,7 @@ how we kill the hallucination problem at the root.
 | `state` | Durable orchestration state (VINES reborn) — runtime-owned, SQLite-default |
 | `memory` | Decay-aware shared memory (VECNA reborn) — auto-injected, SQLite-default |
 | `orchestrator` | The Nexus — routing, dispatch, synthesis (logic in code, not prose) |
+| `tickets` | **The Board** — operator ticket tracking (Cases); replaces Linear |
 | `tendrils` | Specialist agents (system/code/research/data/comm/vision), in-process |
 | `channels` | Telegram + Discord + CLI + WebSocket gateways |
 | `dashboard` | Astro app — real-time, motion-rich (Emil Kowalski · impeccable · Taste) |

@@ -143,7 +143,8 @@ optional (an Ollama server, an opt-in Postgres/MariaDB).
 | `@openhawkins/core` | Agent loop, model adapters, typed tool registry, **Grounding engine**, capability sandbox, event bus | `@anthropic-ai/sdk`, `openai`, ollama client, `zod`/`typebox` |
 | `@openhawkins/state` | VINES reborn — durable orchestration ledger, runtime-owned transitions, recovery | `better-sqlite3` (default), `pg`/`mariadb` (opt-in) |
 | `@openhawkins/memory` | VECNA reborn — fragments, decay ranking, embeddings, auto-injection | sqlite-vec / local embeddings |
-| `@openhawkins/orchestrator` | The Nexus — routing, the Pulse engine (in code), synthesis | core, state, memory |
+| `@openhawkins/tickets` | **The Board** — operator ticket tracking (Cases); replaces Linear; SQLite-backed | state store |
+| `@openhawkins/orchestrator` | The Nexus — routing, the Pulse engine (in code), synthesis | core, state, memory, tickets |
 | `@openhawkins/tendrils` | 6 specialist agent definitions + scoped tool surfaces | core |
 | `@openhawkins/channels` | Telegram (grammY), Discord (discord.js), CLI, WebSocket adapters | grammY, discord.js, ws |
 | `@openhawkins/dashboard` | Astro app — real-time operator UI | Astro, view-transitions, motion lib |
@@ -302,6 +303,31 @@ core rather than retrofitting one.
   scope generalizes; the agent inspects the host and picks the right commands.
 - **Installers:** Homebrew tap, Scoop/winget manifest, `curl | sh`, and `npm i -g`.
 
+### 6.1 Model selection — free, cross-platform, chosen at setup (Cerebro + Mr. Clarke)
+No paid account is required to run OpenHawkins. The **setup wizard ("Mr. Clarke")**
+asks the operator to tune **Cerebro** (the model layer) to one of several free,
+cross-platform options:
+
+| Option | What | Notes |
+| --- | --- | --- |
+| **Local / Ollama** *(default)* | Fully free, private, offline-capable; runs on Win/Mac/Linux | Wizard offers a small capable default (e.g. a Llama/Qwen-class model) and checks hardware |
+| **Free cloud tier** | A provider with a no-cost tier (e.g. Google Gemini / Groq / OpenRouter free models) | User pastes a free API key; stored encrypted in **The Cabin** (§5.5.1) |
+| **Bring your own** | Anthropic / OpenAI / any provider | Opt-in; unlocks stronger grounding-tier routing |
+
+The adapter layer is **provider-agnostic** — model choice is policy, not
+hard-coded. **Important synergy:** weaker free models hallucinate *more*, which is
+exactly why the **Grounding engine (Eleven, §5)** is mandatory, not optional — it
+is the mitigation that makes free local models trustworthy. Grounding-critical
+steps can be routed to a stronger model if the operator has configured one.
+
+### 6.2 Cross-platform tendrils (esp. `system-agent`)
+The six functional ids are kept, but `system-agent` is redefined from Linux-only
+sysadmin to an **OS-aware host agent**: it inspects the host and selects the right
+package manager (`winget`/`choco` · `brew` · `apt`/`dnf`), the right shell
+(PowerShell vs bash/zsh), and cross-platform service control — via the
+OS-abstraction layer above. The other tendrils (`code`, `research`, `data`,
+`comm`, `vision`) are already platform-neutral.
+
 ---
 
 ## 7. Channels: Telegram + Discord
@@ -458,20 +484,37 @@ Captured for consideration; not committed to v1 scope.
 
 ---
 
-## 11. Open questions for review
+## 11. Decisions (resolved 2026-06-05)
 
-1. **Binary toolchain** — Bun `--compile` (fast, single binary, some native-dep
-   edge cases) vs Node SEA (official, heavier). Decide via a spike in S1. *Lean:
-   Bun.*
-2. **Model defaults** — which providers ship enabled out of the box? Anthropic
-   (Opus 4.8 / Sonnet 4.6 / Haiku 4.5) for grounding-critical + Ollama for local?
-3. **Schema lib** — Zod vs TypeBox (source uses TypeBox). *Lean: Zod for DX, or
-   keep TypeBox for continuity.*
-4. **Tendril set** — keep the exact 6 (system/code/research/data/comm/vision) or
-   adjust for the new cross-platform reality?
-5. **Linear** — drop entirely in favor of the dashboard, or keep as an optional
-   exporter?
-6. **License** — MIT (like the source) or other?
+1. **Binary toolchain — Bun `--compile`.** Confirmed lean; validate with a spike
+   in S1 (fall back to Node SEA only if a native-dep blocker appears).
+2. **Model defaults — free + cross-platform, chosen during setup.** No paid
+   provider is required to run. The **setup wizard (Mr. Clarke / Cerebro, §6.1)**
+   asks the user to pick from several free, cross-platform options; default is
+   local **Ollama** (free, private, runs on Win/Mac/Linux). Paid providers are
+   opt-in for those who want stronger grounding-tier models. See §6.1.
+3. **Schema lib — Zod.** Chosen for DX and clean JSON-schema generation for
+   native tool-calling (`zod-to-json-schema`). The TypeBox usages in the copied
+   reference code are **migrated to Zod** during the port (we own the code now;
+   we won't carry two schema libs). *Override possible if continuity wins.*
+4. **Tendril set — adjusted for cross-platform.** Keep the six functional ids, but
+   redefine `system-agent` from Linux-only sysadmin to an **OS-aware host agent**
+   (winget/choco · brew · apt/dnf; PowerShell vs bash; cross-platform service
+   control). See §6.2.
+5. **Linear — dropped.** Replaced by an **own ticket-tracking system, "The Board"**
+   (functional id `tickets`; tickets are *Cases*), backed by the local SQLite
+   store and surfaced in the dashboard. Optional GitHub/Linear *exporters* may be
+   added later, but they are never the source of truth. The Pulse "Anchoring"
+   phase now opens a **Case on The Board** instead of a Linear ticket.
+6. **License — MIT** (matches the source). `LICENSE` added.
+
+> **Naming:** all subsystems keep the **Stranger Things** theme per
+> [`docs/branding.md`](../branding.md) — e.g. the Grounding engine is **Eleven**,
+> the firewall is **The Gate**, the sandbox is **The Lab**, the vault is **The
+> Cabin**, approvals are **Hopper**, audit is **Murray**, tickets are **The
+> Board**, models are **Cerebro**, channels are **Supercomm**, the plugin layer
+> is **The AV Club**, the future marketplace is **Melvald's**, setup is **Mr.
+> Clarke**. *Brand the prose, not the protocol.*
 
 ---
 
