@@ -37,11 +37,16 @@ concurrency. The model proposes; the runtime enforces.
 6. **Feature parity with the openclaw-hawkins pattern**: Nexus orchestration,
    6 Tendrils, durable state (VINES), decay-aware memory (VECNA), operator
    oversight.
-7. **Security & trust as a core pillar** — encrypted secrets, RBAC + sandboxing,
+7. **Learning, auditable, shareable, ecosystem-compatible** — v1 ships
+   deterministic replay + an eval harness, a per-Tendril learning loop, exportable
+   "Pulse replay" artifacts, and `SKILL.md` skill-marketplace compatibility
+   (§10.1). The platform improves over time, can prove what it did, and plugs into
+   the existing skill ecosystem.
+8. **Security & trust as a core pillar** — encrypted secrets, RBAC + sandboxing,
    prompt-injection defense, session integrity, tamper-evident audit, runtime-
    enforced approval, and identity disclosure (§5.5). Safety lives in the runtime,
    below the model — never in a config flag or a prose rule.
-8. **Keep the strengths** of the source repo: TypeScript, strict typing, high
+9. **Keep the strengths** of the source repo: TypeScript, strict typing, high
    test coverage, clean module boundaries.
 
 ### Non-goals (for v1)
@@ -311,14 +316,19 @@ cross-platform options:
 | Option | What | Notes |
 | --- | --- | --- |
 | **Local / Ollama** *(default)* | Fully free, private, offline-capable; runs on Win/Mac/Linux | Wizard offers a small capable default (e.g. a Llama/Qwen-class model) and checks hardware |
+| **Ollama cloud** *(v1)* | Ollama-hosted models (e.g. the source's `…:cloud` tags) — no local hardware needed | Same Ollama adapter/API surface as local; user supplies an Ollama key, stored in **The Cabin**. Great for laptops that can't run big local models |
 | **Free cloud tier** | A provider with a no-cost tier (e.g. Google Gemini / Groq / OpenRouter free models) | User pastes a free API key; stored encrypted in **The Cabin** (§5.5.1) |
 | **Bring your own** | Anthropic / OpenAI / any provider | Opt-in; unlocks stronger grounding-tier routing |
+
+The **Ollama adapter must support both local and `…:cloud` models in v1** behind a
+single code path — local vs cloud is a config/endpoint choice, not a separate
+integration (this mirrors how the source used `ollama/kimi-k2.6:cloud`).
 
 The adapter layer is **provider-agnostic** — model choice is policy, not
 hard-coded. **Important synergy:** weaker free models hallucinate *more*, which is
 exactly why the **Grounding engine (Eleven, §5)** is mandatory, not optional — it
 is the mitigation that makes free local models trustworthy. Grounding-critical
-steps can be routed to a stronger model if the operator has configured one.
+steps can be routed to a stronger model (incl. Ollama cloud) if configured.
 
 ### 6.2 Cross-platform tendrils (esp. `system-agent`)
 The six functional ids are kept, but `system-agent` is redefined from Linux-only
@@ -442,12 +452,12 @@ the umbrella; do **not** try to implement it all from one plan.
 | # | Subproject | Deliverable | Why this order |
 | --- | --- | --- | --- |
 | **S0** | **Repo + monorepo scaffold + this Plan** | Git repo, workspace skeleton, CI, this design doc | Foundation for everything (in progress) |
-| **S1** | **Core runtime + Grounding engine** | Model adapters + agent loop + typed tool registry + Grounding, proven by a thin vertical slice (1 agent, 1 tool, grounding enforced) on Win/Mac/Linux | The foundation **and** the direct fix for the #1 pain point. Highest value, highest risk → first. |
-| **S2** | **State + Memory (SQLite-default)** | VINES + VECNA reborn, runtime-owned, auto-injected | Orchestrator depends on these |
+| **S1** | **Core runtime + Grounding engine** | Model adapters (incl. **Ollama local + cloud**) + agent loop + typed tool registry + Grounding, **event-sourced recording + deterministic replay + eval harness** (§10.1), proven by a thin vertical slice (1 agent, 1 tool, grounding enforced, replayable) on Win/Mac/Linux | The foundation **and** the direct fix for the #1 pain point. Highest value, highest risk → first. Replay/eval must be designed in from turn one. |
+| **S2** | **State + Memory (SQLite-default)** | VINES + VECNA reborn, runtime-owned, auto-injected, **+ per-Tendril learning loop** (§10.1) | Orchestrator depends on these; learning loop closes P11 |
 | **S3** | **Orchestrator + Tendrils** | The Nexus (Pulse in code) + 6 specialists, in-process dispatch | The pattern itself |
 | **S4** | **Channels + Gateway** | Telegram + Discord + CLI + WS daemon | Makes it usable by humans |
-| **S5** | **Dashboard** | Astro real-time motion-rich UI | Operator oversight (replaces Linear) |
-| **S6** | **Plugin SDK + loader + capability sandbox** | `plugin-sdk` + `registry`: load local/npm plugins, declared-capability gating, install-time disclosure | Makes the platform extensible; **prerequisite for the marketplace** |
+| **S5** | **Dashboard** | Astro real-time motion-rich UI **+ "Pulse replay" shareable HTML artifacts** (§10.1) | Operator oversight (replaces Linear) |
+| **S6** | **Plugin SDK + loader + capability sandbox** | `plugin-sdk` + `registry`: load local/npm plugins, **`SKILL.md` skill-marketplace compatibility** (§10.1), declared-capability gating, install-time disclosure | Makes the platform extensible; **prerequisite for the marketplace** |
 | **S7** | **Cross-platform packaging** | Single-binary builds + installers for 3 OSes | Ship it |
 | **M1** *(future)* | **Hosted marketplace** | Registry, submission + security-scan + signing flow, dashboard "Marketplace" view | Community plugin ecosystem (needs S6 contracts stable first) |
 
@@ -461,26 +471,41 @@ ending hallucination on a real task.
 
 ---
 
-## 10. Extra ideas (brainstorm)
+## 10. Scope
 
-Captured for consideration; not committed to v1 scope.
+### 10.1 Promoted into v1 (committed)
+These four are **v1 features**, not future ideas — they are cheap to design in now
+and expensive to retrofit, and together they make the platform *learning,
+auditable, and shareable*. Each is anchored to the subproject that owns it.
 
+- **Deterministic replay & eval harness** *(owned by S1, built on the event-
+  sourced runtime)* — every turn (prompt, tool call, tool result, model output) is
+  recorded so any orchestration can be **replayed deterministically** to debug, to
+  A/B a prompt/model change, and to regression-test agent behavior. The eval
+  harness runs recorded scenarios as automated tests — and is the natural home for
+  the **Eleven** grounding acceptance tests (§5). Builds directly on **Murray**
+  (§5.5.5) and the trace store (P12).
+- **Per-Tendril learning loop** *(owned by S2, **VECNA**)* — memory fragments are
+  tagged by tendril; on each dispatch the runtime auto-injects that specialist's
+  own accumulated lessons, so each Tendril measurably improves its future
+  grounding over time (closes the loop on P11). Includes a feedback signal from
+  approval/audit outcomes back into fragment importance.
+- **"Pulse replay" as shareable artifacts** *(owned by S5, dashboard)* — export
+  any orchestration as a **self-contained, animated HTML trace** (the Pulse phases,
+  tendril dispatches, tool calls, grounding decisions) that can be shared/opened
+  offline. Uses the same replay data as the eval harness.
+- **Skill-marketplace compatibility** *(owned by S6, **The AV Club**)* — read the
+  same `SKILL.md` format the `skills` CLI uses (the format used to install
+  `emil-design-eng` / `impeccable` / `design-taste-frontend` for this project), so
+  the existing community skill ecosystem drops into OpenHawkins directly, and
+  **Melvald's** (M1) can host them.
+
+### 10.2 Future / not committed
 - **MCP support** — OpenHawkins as both an MCP *client* (consume external tools)
   and an MCP *server* (expose Tendrils to other agents). Huge interop win.
-- **Skill marketplace compatibility** — read the same `SKILL.md` format the
-  `skills` CLI uses (the one we just used to install Emil/impeccable/Taste), so
-  the community ecosystem drops in.
 - **Cost & token budgets per orchestration**, enforced by the scheduler (hard cap
   → graceful stop), surfaced live in the dashboard.
-- **Deterministic replay & eval harness** — record every turn; replay to debug or
-  to A/B a prompt/model change; regression-test agent behavior.
-- **Local-first / offline mode** — fully functional with Ollama, no cloud.
-- **Plugin API** — let OpenHawkins itself be extended (new Tendrils, new channels,
-  new tools) without forking.
-- **"Pulse replay" as shareable artifacts** — export an orchestration as a
-  self-contained, animated HTML trace.
-- **Per-Tendril learning loop** — memory fragments tagged by tendril improve that
-  specialist's future grounding (closes the loop on P11).
+- **Local-first / offline mode** — fully functional with local Ollama, no cloud.
 
 ---
 
