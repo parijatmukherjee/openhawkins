@@ -7,3 +7,5 @@ export * from "./session/session.js";
 export * from "./session/replay.js";
 export * from "./security/capability.js";
 export * from "./tools/to-json-schema.js";
+export * from "./tools/tool.js";
+export * from "./tools/registry.js";
