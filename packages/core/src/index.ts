@@ -6,3 +6,4 @@ export * from "./session/state.js";
 export * from "./session/session.js";
 export * from "./session/replay.js";
 export * from "./security/capability.js";
+export * from "./tools/to-json-schema.js";
