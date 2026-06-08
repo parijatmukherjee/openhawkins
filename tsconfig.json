@@ -4,6 +4,8 @@
     { "path": "packages/core" },
     { "path": "packages/core/tsconfig.test.json" },
     { "path": "packages/state" },
-    { "path": "packages/state/tsconfig.test.json" }
+    { "path": "packages/state/tsconfig.test.json" },
+    { "path": "packages/memory" },
+    { "path": "packages/memory/tsconfig.test.json" }
   ]
 }
