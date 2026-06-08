@@ -1,7 +1,8 @@
 import type { SqlDriver } from "./driver/driver.js";
 
-/** One forward-only schema step. `version` is strictly increasing and contiguous. */
+/** One forward-only schema step. */
 export interface Migration {
+  /** Caller's contract: strictly increasing across the migration list (gaps tolerated). */
   version: number;
   name: string;
   up: string; // SQL executed once, inside a transaction

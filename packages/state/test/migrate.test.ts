@@ -32,4 +32,18 @@ describe("migrate (forward-only)", () => {
     expect(migrate(db, withThird)).toBe(1);
     db.close();
   });
+
+  it("rolls back a failing migration: throws and records nothing for it", () => {
+    const db = openDatabase({ path: ":memory:" });
+    const bad: Migration[] = [
+      { version: 1, name: "ok", up: "CREATE TABLE a (id INTEGER)" },
+      { version: 2, name: "bad", up: "THIS IS NOT VALID SQL" },
+    ];
+    expect(() => migrate(db, bad)).toThrow();
+    // v1 committed; v2 rolled back -> only version 1 recorded, table b absent.
+    expect(db.prepare("SELECT version FROM _migrations ORDER BY version").all()).toEqual([
+      { version: 1 },
+    ]);
+    db.close();
+  });
 });
