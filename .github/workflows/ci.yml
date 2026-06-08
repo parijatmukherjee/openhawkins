@@ -49,6 +49,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
       - run: bun install
+      # Build first so cross-package imports (e.g. @openhawkins/state -> core)
+      # resolve to each package's dist the same way the node job does.
+      - run: bun run build
       - run: bunx vitest run
       - run: bun build packages/core/src/bin/probe.ts --compile --outfile probe-bin
 

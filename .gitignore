@@ -16,3 +16,7 @@ probe-bin.exe
 data/
 .astro/
 .turbo/
+
+# Bun creates this on `bun install`; the project uses npm (package-lock.json).
+bun.lock
+bun.lockb
