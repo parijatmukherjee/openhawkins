@@ -17,22 +17,34 @@ how we kill the hallucination problem at the root.
 
 ## Status
 
-🟢 **S1 Foundation in progress.** The `@openhawkins/core` package is real, tested
-(42 passing tests), and gated by a required Docker CI check. Merged so far:
+🟢 **S1 Foundation complete — the headline hallucination test passes.** The
+`@openhawkins/core` package is real and gated by a required Docker CI check plus a
+**>99% coverage gate** (148 unit tests + black-box functional e2e). What's built:
 
-- **Event-sourced session core** — durable `DomainEvent` log, serialized turns
-  (turns never overlap), reducer-based state, and replay.
-- **The Lab — capability-gated tool registry** — default-deny `grantSatisfies`, a
-  `ToolRegistry.invoke()` that never throws (structured `ToolResult`), a
-  confused-deputy guard, and Zod validation of tool args _and_ results. Proven
-  end-to-end by the `disk_free` tool.
-- **Native-tool-calling groundwork** — Zod → JSON Schema export for the model
-  adapters landing in S1.3.
+- **Event-sourced session core** — durable `DomainEvent` log, single-writer
+  serialized turns, reducer-based state, deterministic replay.
+- **The Lab — capability-gated tool registry** — default-deny, never-throws
+  `ToolRegistry`, confused-deputy guard, Zod validation both directions.
+- **Model adapters** — Ollama (local + cloud, one code path) and an
+  OpenAI-compatible adapter, over an injectable HTTP seam; a `ScriptedAdapter` for
+  deterministic replay. **The Cabin** secret vault (encrypted `FileVault`).
+- **The agent loop** — native tool-calling round-trip with a model-call budget.
+- **Eleven — the grounding engine** — `off`/`preferred`/`required`/`cited` modes;
+  `required` rejects any answer before a successful qualifying tool call, `cited`
+  verifies the structured answer's citations and numeric claims against the tool
+  result, and the honest "unknown" is accepted. The model proposes; Eleven enforces.
+- **Murray audit** (hash-chained, tamper-evident) + **The Gate** (taint →
+  approval) + secret **redaction**.
+- **`ask` CLI + eval harness** — the same weak model, run `cited` vs `off`, rejects
+  the fabricated "250 GB" guess and answers the real free-bytes vs lets the
+  hallucination survive — proving the engine is the difference.
 
-Next up: model adapters + secret vault (S1.3), the agent loop (S1.4), and the
-Eleven grounding engine (S1.5+). The design lives in
+Try it: `node packages/core/dist/bin/ask.js "How much disk is free?" --json`
+(or `--model ollama` against a real local model). The design lives in
 [`docs/specs/2026-06-05-openhawkins-design.md`](docs/specs/2026-06-05-openhawkins-design.md);
 the security model is in [`docs/security-model.md`](docs/security-model.md).
+
+Next up: durable SQLite state + VECNA memory (S2) and the Nexus orchestrator (S3).
 
 ## The pieces (planned)
 
