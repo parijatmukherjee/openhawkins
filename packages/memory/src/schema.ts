@@ -31,7 +31,8 @@ export const MEMORY_SCHEMA: Migration[] = [
       CREATE TRIGGER fragments_ad AFTER DELETE ON fragments BEGIN
         INSERT INTO fragments_fts(fragments_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
       END;
-      CREATE TRIGGER fragments_au AFTER UPDATE ON fragments BEGIN
+      CREATE TRIGGER fragments_au AFTER UPDATE OF text ON fragments
+      WHEN new.text != old.text BEGIN
         INSERT INTO fragments_fts(fragments_fts, rowid, text) VALUES ('delete', old.rowid, old.text);
         INSERT INTO fragments_fts(rowid, text) VALUES (new.rowid, new.text);
       END;
