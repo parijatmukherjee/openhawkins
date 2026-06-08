@@ -12,5 +12,3 @@ probe-bin
 probe-bin.exe
 .astro
 .turbo
-# Vendored read-only copy of another project — not needed to build or test.
-reference
