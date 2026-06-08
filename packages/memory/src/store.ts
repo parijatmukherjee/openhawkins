@@ -125,17 +125,25 @@ export class VecnaStore {
     const k = query.k ?? 5;
 
     if (this.embedder) {
+      const rows = this.loadEmbeddedStmt.all() as (FragmentRow & { embedding: Uint8Array })[];
+      if (rows.length === 0) {
+        return [];
+      }
       const qvec = await this.embedder.embed(query.text);
       if (isZeroVector(qvec)) {
         return [];
       }
-      const rows = this.loadEmbeddedStmt.all() as (FragmentRow & { embedding: Uint8Array })[];
-      const candidates: Candidate[] = rows.map((r) => ({
-        fragment: rowToFragment(r),
-        // clamp cosine to [0,1] so the text term shares scale with the lexical path
-        // (a real embedder can return a negative cosine for dissimilar text).
-        relevance: Math.max(0, cosineSimilarity(qvec, blobToVec(r.embedding))),
-      }));
+      const candidates: Candidate[] = rows
+        .map((r) => ({
+          fragment: rowToFragment(r),
+          // clamp cosine to [0,1] so the text term shares scale with the lexical path
+          // (a real embedder can return a negative cosine for dissimilar text).
+          relevance: Math.max(0, cosineSimilarity(qvec, blobToVec(r.embedding))),
+        }))
+        // drop fragments with no semantic overlap so vector recall (like lexical)
+        // returns nothing rather than a freshness-sorted dump when nothing matches.
+        // A configurable min-relevance threshold is a future tuning knob (S2.4).
+        .filter((c) => c.relevance > 0);
       return rankCandidates(candidates, ctx, k);
     }
 

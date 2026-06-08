@@ -223,6 +223,21 @@ describe("VecnaStore vector recall", () => {
     s.close();
   });
 
+  it("excludes fragments with zero semantic similarity (cosine 0 filtered out)", async () => {
+    const ortho = {
+      dims: 2,
+      async embed(text: string): Promise<Float32Array> {
+        return text.includes("disk") ? new Float32Array([1, 0]) : new Float32Array([0, 1]);
+      },
+    };
+    let n = 0;
+    const s = VecnaStore.open(":memory:", { id: () => `f-${++n}`, embedder: ortho });
+    await s.remember({ text: "free disk space" }, 1); // -> [1, 0]
+    const hits = await s.recall({ text: "the weather today", now: 2 }); // -> [0, 1], cosine 0
+    expect(hits).toEqual([]);
+    s.close();
+  });
+
   it("round-trips an embedding from a view-returning embedder (byteOffset > 0)", async () => {
     // An embedder that returns a SUBARRAY (byteOffset > 0) — proves remember stores
     // only the vector's own bytes, not the whole backing buffer.
