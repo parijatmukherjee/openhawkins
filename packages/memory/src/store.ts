@@ -94,9 +94,11 @@ export class VecnaStore {
       lastUsedAt: now,
       uses: 0,
     };
-    const embedding = this.embedder
-      ? Buffer.from((await this.embedder.embed(fragment.text)).buffer)
-      : null;
+    let embedding: Buffer | null = null;
+    if (this.embedder) {
+      const vec = await this.embedder.embed(fragment.text);
+      embedding = Buffer.from(vec.buffer, vec.byteOffset, vec.byteLength);
+    }
     this.insertStmt.run(
       fragment.id,
       fragment.text,
