@@ -16,3 +16,5 @@ export * from "./tools/to-json-schema.js";
 export * from "./tools/tool.js";
 export * from "./tools/registry.js";
 export * from "./tools/disk-free.js";
+export * from "./loop/turn.js";
+export * from "./loop/agent-loop.js";
