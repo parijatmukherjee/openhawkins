@@ -17,8 +17,22 @@ how we kill the hallucination problem at the root.
 
 ## Status
 
-🟡 **Planning.** Nothing is built yet. The design lives in
-[`docs/specs/2026-06-05-openhawkins-design.md`](docs/specs/2026-06-05-openhawkins-design.md).
+🟢 **S1 Foundation in progress.** The `@openhawkins/core` package is real, tested
+(42 passing tests), and gated by a required Docker CI check. Merged so far:
+
+- **Event-sourced session core** — durable `DomainEvent` log, serialized turns
+  (turns never overlap), reducer-based state, and replay.
+- **The Lab — capability-gated tool registry** — default-deny `grantSatisfies`, a
+  `ToolRegistry.invoke()` that never throws (structured `ToolResult`), a
+  confused-deputy guard, and Zod validation of tool args _and_ results. Proven
+  end-to-end by the `disk_free` tool.
+- **Native-tool-calling groundwork** — Zod → JSON Schema export for the model
+  adapters landing in S1.3.
+
+Next up: model adapters + secret vault (S1.3), the agent loop (S1.4), and the
+Eleven grounding engine (S1.5+). The design lives in
+[`docs/specs/2026-06-05-openhawkins-design.md`](docs/specs/2026-06-05-openhawkins-design.md);
+the security model is in [`docs/security-model.md`](docs/security-model.md).
 
 ## The pieces (planned)
 
