@@ -46,11 +46,13 @@ export function decay(ageMs: number, halfLifeMs: number): number {
 
 /**
  * Map an FTS5 `bm25` score (<= 0, more negative = a better match) to a normalized
- * relevance in [0, 1) so the lexical path feeds the same scorer as the vector path
- * (where relevance is cosine similarity).
+ * relevance in [0, 1). FTS5 always returns bm25 <= 0 for a match; the `Math.min(0, …)`
+ * makes that contract self-enforcing so the text signal is never negative. Both recall
+ * modes feed `Candidate.relevance` on the same [0, 1] scale — the lexical path via this
+ * helper, the vector path via a clamped cosine similarity (see store.recall, S2.3).
  */
 export function bm25ToRelevance(bm25: number): number {
-  return 1 - Math.exp(bm25);
+  return 1 - Math.exp(Math.min(0, bm25));
 }
 
 /**
@@ -139,6 +141,8 @@ export function scoreCandidate(
   ctx: RecallContext,
   w: RecallWeights = DEFAULT_WEIGHTS,
 ): number {
+  // relevance is a normalized [0,1] signal (bm25->relevance for lexical, clamped
+  // cosine for vector), so the text term shares scale with importance*decay/tags.
   const text = w.text * c.relevance;
   const age = Math.max(0, ctx.now - c.fragment.lastUsedAt);
   const importance = w.importance * c.fragment.importance * decay(age, w.halfLifeMs);
