@@ -42,9 +42,12 @@ describe("SqliteEventStore (VINES)", () => {
 
     // Fresh handle on the same file — as if a new process started up.
     const reopened = SqliteEventStore.open(path);
-    const replayed = await rebuildState(reopened, "s-1");
-    expect(replayed).toEqual(liveState);
-    expect(replayed.turns).toEqual([{ id: "s-1-turn-1", input: "ping", final: "pong" }]);
-    reopened.close();
+    try {
+      const replayed = await rebuildState(reopened, "s-1");
+      expect(replayed).toEqual(liveState);
+      expect(replayed.turns).toEqual([{ id: "s-1-turn-1", input: "ping", final: "pong" }]);
+    } finally {
+      reopened.close();
+    }
   });
 });
