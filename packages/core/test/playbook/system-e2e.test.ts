@@ -132,4 +132,21 @@ describe("system end-to-end robustness", () => {
       await phaseSeq(b.store as InMemoryEventStore),
     );
   });
+
+  it("a secret planted in a prompt never lands in the event store or audit (F-C3)", async () => {
+    // built (not a literal) so the source has no contiguous secret token for scanners
+    const SECRET = `sk-${"planted".repeat(3)}`;
+    const built = await buildAgentRun({
+      adapter: multiTurnWeakModel(tmpdir(), 1),
+      grounding: "cited",
+      prompts: { Execute: `remember my key ${SECRET}` },
+      operator: approvals(8),
+      validateGate: new ValidateGate(async () => ({ ok: true })),
+    });
+    expect(await built.run.run()).toEqual({ kind: "completed" });
+    const events = JSON.stringify(await built.store.read("probe-agent-session"));
+    const audit = JSON.stringify(await built.audit.entries());
+    expect(events).not.toContain(SECRET);
+    expect(audit).not.toContain(SECRET);
+  });
 });

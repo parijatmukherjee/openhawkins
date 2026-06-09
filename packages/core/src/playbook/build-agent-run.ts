@@ -4,6 +4,7 @@ import { ToolRegistry } from "../tools/registry.js";
 import { diskFreeTool } from "../tools/disk-free.js";
 import type { GroundingMode } from "../grounding/eleven.js";
 import { InMemoryEventStore, type EventStore } from "../session/events.js";
+import { RedactingEventStore } from "../session/redacting-store.js";
 import { InMemoryAuditLog, type AuditLog } from "../security/audit.js";
 import { type Clock, systemClock } from "../util/clock.js";
 import type { AgentGrant } from "../security/capability.js";
@@ -43,7 +44,8 @@ export interface BuiltAgentRun {
  */
 export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgentRun> {
   const clock = opts.clock ?? systemClock;
-  const store = opts.store ?? new InMemoryEventStore();
+  const baseStore = opts.store ?? new InMemoryEventStore();
+  const store = new RedactingEventStore(baseStore);
   const audit = opts.audit ?? new InMemoryAuditLog();
   // `Agent.start` derives its sessionId as `${agentId}-session`; we hand the PlaybookRun
   // the same id so both stream into the one shared store/audit. Derive both from one

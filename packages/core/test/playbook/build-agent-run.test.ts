@@ -4,7 +4,8 @@ import { AgentRun } from "../../src/playbook/agent-run.js";
 import { ScriptedOperator } from "../../src/playbook/operators.js";
 import { weakHostFactsModel } from "../../src/eval/scenarios.js";
 import { ValidateGate } from "../../src/playbook/gates.js";
-import { InMemoryEventStore } from "../../src/session/events.js";
+import { InMemoryEventStore, type DomainEvent } from "../../src/session/events.js";
+import { RedactingEventStore } from "../../src/session/redacting-store.js";
 import { InMemoryAuditLog } from "../../src/security/audit.js";
 import { tmpdir } from "node:os";
 
@@ -63,7 +64,15 @@ describe("buildAgentRun", () => {
       store,
       audit,
     });
-    expect(built.store).toBe(store);
+    // the injected store is wrapped for redaction, but writes DO land in it:
+    expect(built.store).toBeInstanceOf(RedactingEventStore);
+    await built.store.append({
+      type: "SessionStarted",
+      sessionId: "probe-agent-session",
+      agentId: "probe-agent",
+      at: 0,
+    } as DomainEvent);
+    expect((await store.read("probe-agent-session")).length).toBeGreaterThan(0);
     expect(built.audit).toBe(audit);
   });
 });
