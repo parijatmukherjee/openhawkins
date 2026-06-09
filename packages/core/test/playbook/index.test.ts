@@ -14,5 +14,6 @@ describe("@openhawkins/core playbook barrel", () => {
     expect(typeof playbook.gateCommandPredicate).toBe("function");
     expect(typeof playbook.npmExecutable).toBe("function");
     expect(Array.isArray(playbook.DEFAULT_GATE_COMMANDS)).toBe(true);
+    expect(typeof playbook.PlaybookRun).toBe("function");
   });
 });

@@ -56,6 +56,15 @@ describe("PlaybookRun.start", () => {
       PlaybookRun.start(deps({ manifest: { phases: [], maxReplans: 3 } })),
     ).rejects.toThrow(/no phases/);
   });
+
+  it("falls back to the system clock when none is supplied", async () => {
+    const d = deps();
+    delete d.clock; // exercise the `?? systemClock` fallback
+    const before = Date.now();
+    await PlaybookRun.start(d);
+    const [event] = (await d.store.read("s1")).filter(isPhaseEvent);
+    expect(event?.at).toBeGreaterThanOrEqual(before);
+  });
 });
 
 const phasesOf = async (store: InMemoryEventStore): Promise<string[]> =>
@@ -127,5 +136,47 @@ describe("PlaybookRun.advance", () => {
     expect(await run.advance()).toEqual({ kind: "done", phase: "Present" });
     const after = (await (d.store as InMemoryEventStore).read("s1")).length;
     expect(after).toBe(before); // no new events at terminal
+  });
+});
+
+describe("PlaybookRun.override", () => {
+  it("a granted override advances a paused soft phase, recording PhaseOverridden", async () => {
+    const d = deps(); // SoftGate pauses Research; OPERATOR holds playbook:override
+    const run = await PlaybookRun.start(d);
+    await run.advance(); // -> awaiting-operator at Research
+    const status = await run.override("alice", "spikes done");
+    expect(status).toEqual({ kind: "running", phase: "Plan" });
+    const events = await phasesOf(d.store as InMemoryEventStore);
+    expect(events).toEqual([
+      "PhaseEntered:Research",
+      "PhaseOverridden:Research",
+      "PhaseEntered:Plan",
+    ]);
+    expect(await d.audit.verify()).toBe(true);
+  });
+
+  it("a denied override (no capability) changes nothing but audits the attempt", async () => {
+    const noGrant: AgentGrant = { agentId: "op", capabilities: [] };
+    const d = deps({ grant: noGrant });
+    const run = await PlaybookRun.start(d);
+    await run.advance(); // awaiting-operator at Research
+    const status = await run.override("mallory", "skip it");
+    expect(status.kind).toBe("awaiting-operator");
+    expect(run.state).toEqual({ phase: "Research", replans: 0 });
+    expect(await phasesOf(d.store as InMemoryEventStore)).toEqual(["PhaseEntered:Research"]);
+    const audit = await d.audit.entries();
+    expect(audit.map((e) => e.kind)).toContain("PhaseOverrideDenied");
+    expect(await d.audit.verify()).toBe(true);
+  });
+
+  it("a granted override at the terminal phase is a no-op done", async () => {
+    const d = deps({ validateGate: fakeGate({ status: "passed" }) });
+    const run = await PlaybookRun.start(d);
+    for (let i = 0; i < 4; i++) await run.override("op", "skip"); // -> Validate
+    await run.advance(); // Validate passed -> Present
+    const before = (await (d.store as InMemoryEventStore).read("s1")).length;
+    expect(await run.override("op", "noop")).toEqual({ kind: "done", phase: "Present" });
+    const after = (await (d.store as InMemoryEventStore).read("s1")).length;
+    expect(after).toBe(before); // no new events overriding at terminal
   });
 });
