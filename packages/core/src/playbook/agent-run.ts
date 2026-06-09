@@ -49,7 +49,10 @@ export class AgentRun {
         return { kind: "escalated", phase: current.phase, reason: current.reason };
       }
 
-      const phase = playbook.state.phase;
+      // `current` is now `running` (a soft-phase pause is always resolved inline below,
+      // never carried back to the loop top), so its phase IS the current run position —
+      // read it from status() alone rather than also reaching into `playbook.state`.
+      const phase = current.phase;
       await handlers[phase]?.({ phase });
       let status = await playbook.advance();
 
