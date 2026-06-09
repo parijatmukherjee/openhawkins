@@ -22,17 +22,24 @@ export class ConverterRegistry {
     return this;
   }
 
-  /** Resolve a converter for the given hints + raw data. */
+  /** Resolve a converter for the given hints + raw data. Precedence is strictly
+   *  mime → extension → content sniff: a mime match always wins over an extension
+   *  match even when a later-registered converter is the one matching the mime, so
+   *  routing does not depend on registration order. */
   pick(input: ConvertInput): Converter {
+    if (input.mime !== undefined) {
+      const mime = input.mime;
+      const byMime = this.converters.find((c) => c.accepts({ mime }));
+      if (byMime) {
+        return byMime;
+      }
+    }
     const ext = extOf(input.filename);
-    const byHint = this.converters.find((c) =>
-      c.accepts({
-        ...(input.mime !== undefined ? { mime: input.mime } : {}),
-        ...(ext !== undefined ? { ext } : {}),
-      }),
-    );
-    if (byHint) {
-      return byHint;
+    if (ext !== undefined) {
+      const byExt = this.converters.find((c) => c.accepts({ ext }));
+      if (byExt) {
+        return byExt;
+      }
     }
     const sniffed = sniff(asString(input.data));
     if (sniffed !== undefined) {
@@ -53,8 +60,10 @@ export class ConverterRegistry {
   async convert(input: ConvertInput): Promise<MarkdownResult> {
     const warnings: string[] = [];
     let converter = this.fallback;
+    let picked = false;
     try {
       converter = this.pick(input);
+      picked = true;
       const out = await converter.convert(input.data);
       return {
         markdown: out.markdown,
@@ -63,7 +72,10 @@ export class ConverterRegistry {
         ...(out.title !== undefined ? { title: out.title } : {}),
       };
     } catch (err) {
-      warnings.push(`converter "${converter.format}" failed: ${describe(err)}; treated as text`);
+      // Attribute the failure precisely: a throw before `picked` is a selection-time
+      // failure (e.g. a converter's accepts() threw), not the chosen converter's fault.
+      const culprit = picked ? `converter "${converter.format}"` : "converter selection";
+      warnings.push(`${culprit} failed: ${describe(err)}; treated as text`);
       try {
         const fb = await this.fallback.convert(input.data);
         return { markdown: fb.markdown, format: this.fallback.format, warnings };

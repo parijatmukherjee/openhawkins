@@ -34,6 +34,28 @@ describe("ConverterRegistry", () => {
     });
   });
 
+  it("prefers a mime match over an extension match, regardless of registration order", async () => {
+    const byExt: Converter = {
+      format: "ext-fmt",
+      accepts: (d) => d.ext === "dat",
+      convert: async () => ({ markdown: "from-ext" }),
+    };
+    const byMime: Converter = {
+      format: "mime-fmt",
+      accepts: (d) => d.mime === "application/special",
+      convert: async () => ({ markdown: "from-mime" }),
+    };
+    // ext converter registered FIRST; mime must still win when both hints are present
+    const reg = new ConverterRegistry(textConverter).register(byExt).register(byMime);
+    const res = await reg.convert({
+      data: "x",
+      mime: "application/special",
+      filename: "doc.dat",
+    });
+    expect(res.format).toBe("mime-fmt");
+    expect(res.markdown).toBe("from-mime");
+  });
+
   it("falls back to the text converter when nothing accepts", async () => {
     expect(await registry().convert({ data: "plain words" })).toEqual({
       markdown: "plain words",
@@ -76,7 +98,8 @@ describe("ConverterRegistry", () => {
     const res = await reg.convert({ data: "safe words", mime: "text/plain" });
     expect(res.format).toBe("text");
     expect(res.markdown).toBe("safe words");
-    expect(res.warnings[0]).toMatch(/accepts blew up/);
+    // a throw during selection is attributed to selection, not the fallback converter
+    expect(res.warnings[0]).toMatch(/selection failed.*accepts blew up/);
   });
 
   it("degrades to a raw text decode when the fallback converter itself throws", async () => {

@@ -25,6 +25,13 @@ or stored in VECNA memory.
 hand-rolled) and **DOCX, XLSX, PPTX, PDF** (light pure-JS libraries) — plus a small
 CLI to exercise it.
 
+> **Delivery across milestones (see §10).** v1 is built and shipped incrementally, one
+> PR per milestone: **M1** — the registry + detection + the text/markup converters
+> (HTML, CSV, JSON, XML, plain-text); **M2** — the Office converters (DOCX, XLSX,
+> PPTX); **M3** — the PDF converter, the CLI, and a black-box functional test. A given
+> PR ships only its milestone's slice; this section describes the v1 whole, not any
+> single PR.
+
 **Out of scope (later increments / optional).** Image OCR and audio/video
 transcription (markitdown's heaviest, cloud/LLM-dependent converters); the
 "always-on" **wiring** into each ingestion consumer (tool results, VECNA memory,
