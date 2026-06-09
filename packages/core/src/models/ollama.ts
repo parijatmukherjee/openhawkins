@@ -5,7 +5,14 @@ import type {
   GenerateResult,
   ModelToolCall,
 } from "./adapter.js";
-import { defaultHttp, type HttpFetch } from "./http.js";
+import {
+  defaultHttp,
+  parseJsonOrThrow,
+  assertSafeBaseUrl,
+  requestWithTimeout,
+  withRetry,
+  type HttpFetch,
+} from "./http.js";
 
 /**
  * Ollama adapter — one code path for both **local** (default
@@ -21,6 +28,12 @@ export interface OllamaConfig {
   apiKey?: string;
   /** Injected for tests; defaults to the real transport. */
   http?: HttpFetch;
+  /** Per-request deadline in ms before the call is aborted (default 30000). */
+  timeoutMs?: number;
+  /** Bounded retries on a transient failure (default 2). */
+  retries?: number;
+  /** Base backoff in ms for the exponential retry (default 200). */
+  retryBaseMs?: number;
 }
 
 interface OllamaToolCall {
@@ -36,12 +49,19 @@ export class OllamaAdapter implements ModelAdapter {
   private readonly baseUrl: string;
   private readonly apiKey: string | undefined;
   private readonly http: HttpFetch;
+  private readonly timeoutMs: number;
+  private readonly retries: number;
+  private readonly retryBaseMs: number;
 
   constructor(cfg: OllamaConfig) {
     this.model = cfg.model;
     this.baseUrl = (cfg.baseUrl ?? "http://127.0.0.1:11434").replace(/\/$/, "");
+    assertSafeBaseUrl(this.baseUrl);
     this.apiKey = cfg.apiKey;
     this.http = cfg.http ?? defaultHttp;
+    this.timeoutMs = cfg.timeoutMs ?? 30000;
+    this.retries = cfg.retries ?? 2;
+    this.retryBaseMs = cfg.retryBaseMs ?? 200;
   }
 
   async generate(req: GenerateRequest): Promise<GenerateResult> {
@@ -65,16 +85,22 @@ export class OllamaAdapter implements ModelAdapter {
       headers.authorization = `Bearer ${this.apiKey}`;
     }
 
-    const res = await this.http(`${this.baseUrl}/api/chat`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
+    const url = `${this.baseUrl}/api/chat`;
+    const res = await withRetry(
+      () =>
+        requestWithTimeout(
+          this.http,
+          url,
+          { method: "POST", headers, body: JSON.stringify(body) },
+          this.timeoutMs,
+        ),
+      { retries: this.retries, baseDelayMs: this.retryBaseMs },
+    );
     const text = await res.text();
     if (!res.ok) {
       throw new Error(`ollama request failed (${res.status}): ${text}`);
     }
-    return parseOllamaResponse(JSON.parse(text) as OllamaChatResponse);
+    return parseOllamaResponse(parseJsonOrThrow<OllamaChatResponse>(text, "ollama", res.status));
   }
 }
 

@@ -101,4 +101,32 @@ describe("OpenAiCompatAdapter", () => {
       /openai-compat request failed \(401\)/,
     );
   });
+
+  it("rejects with a diagnosable error when a 200 body is not JSON (HTML error page)", async () => {
+    const http: HttpFetch = async () => ({
+      ok: true,
+      status: 200,
+      text: async () => "<html>oops</html>",
+    });
+    const adapter = new OpenAiCompatAdapter({
+      model: "gpt-x",
+      baseUrl: "https://api.example/v1",
+      http,
+    });
+    await expect(adapter.generate({ messages: [] })).rejects.toThrow(/non-JSON/);
+  });
+
+  it("honors explicit timeout/retry config on the happy path (one attempt, no abort)", async () => {
+    const { http } = stub({ choices: [{ message: { content: "ok", tool_calls: [] } }] });
+    const adapter = new OpenAiCompatAdapter({
+      model: "gpt-x",
+      baseUrl: "https://api.example/v1",
+      http,
+      timeoutMs: 5,
+      retries: 1,
+      retryBaseMs: 0,
+    });
+    const res = await adapter.generate({ messages: [{ role: "user", content: "q" }] });
+    expect(res.content).toBe("ok");
+  });
 });

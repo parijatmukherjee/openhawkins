@@ -87,4 +87,17 @@ describe("OllamaAdapter", () => {
       /ollama request failed \(404\)/,
     );
   });
+
+  it("honors explicit timeout/retry config on the happy path (one attempt, no abort)", async () => {
+    const { http } = stubHttp({ message: { content: "ok" } });
+    const adapter = new OllamaAdapter({
+      model: "llama3.1",
+      http,
+      timeoutMs: 5,
+      retries: 1,
+      retryBaseMs: 0,
+    });
+    const res = await adapter.generate({ messages: [{ role: "user", content: "hi" }] });
+    expect(res.content).toBe("ok");
+  });
 });

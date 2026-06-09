@@ -41,7 +41,11 @@ describe("OpenAiCompatAdapter argument parsing", () => {
     const { http } = stub({
       choices: [{ message: { tool_calls: [{ id: "c1", function: { name: "t" } }] } }],
     });
-    const adapter = new OpenAiCompatAdapter({ model: "m", baseUrl: "u", http });
+    const adapter = new OpenAiCompatAdapter({
+      model: "m",
+      baseUrl: "https://api.example/v1",
+      http,
+    });
     const res = await adapter.generate({ messages: [] });
     expect(res.toolCalls[0].args).toEqual({});
   });
@@ -52,7 +56,11 @@ describe("OpenAiCompatAdapter argument parsing", () => {
         { message: { tool_calls: [{ id: "c2", function: { name: "t", arguments: "not json" } }] } },
       ],
     });
-    const adapter = new OpenAiCompatAdapter({ model: "m", baseUrl: "u", http });
+    const adapter = new OpenAiCompatAdapter({
+      model: "m",
+      baseUrl: "https://api.example/v1",
+      http,
+    });
     const res = await adapter.generate({ messages: [] });
     expect(res.toolCalls[0].args).toEqual({});
   });
@@ -61,9 +69,24 @@ describe("OpenAiCompatAdapter argument parsing", () => {
     const { http } = stub({
       choices: [{ message: { tool_calls: [{ function: { name: "t", arguments: "{}" } }] } }],
     });
-    const adapter = new OpenAiCompatAdapter({ model: "m", baseUrl: "u", http });
+    const adapter = new OpenAiCompatAdapter({
+      model: "m",
+      baseUrl: "https://api.example/v1",
+      http,
+    });
     const res = await adapter.generate({ messages: [] });
     expect(res.toolCalls[0].id).toBe("oc-1");
+  });
+
+  it("defaults the tool name to empty when the provider omits the function object", async () => {
+    const { http } = stub({ choices: [{ message: { tool_calls: [{ id: "c3" }] } }] });
+    const adapter = new OpenAiCompatAdapter({
+      model: "m",
+      baseUrl: "https://api.example/v1",
+      http,
+    });
+    const res = await adapter.generate({ messages: [] });
+    expect(res.toolCalls[0]).toEqual({ id: "c3", tool: "", args: {} });
   });
 });
 
@@ -83,6 +106,27 @@ describe("defaultHttp", () => {
       });
       expect(res.ok).toBe(true);
       expect(await res.text()).toBe("pong");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  it("forwards an AbortSignal to the platform fetch when present", async () => {
+    const original = globalThis.fetch;
+    let seenSignal: AbortSignal | undefined;
+    globalThis.fetch = (async (_url: string, init: RequestInit) => {
+      seenSignal = init.signal ?? undefined;
+      return { ok: true, status: 200, text: async () => "ok" };
+    }) as unknown as typeof fetch;
+    const controller = new AbortController();
+    try {
+      await defaultHttp("http://example.test", {
+        method: "GET",
+        headers: {},
+        body: "",
+        signal: controller.signal,
+      });
+      expect(seenSignal).toBe(controller.signal);
     } finally {
       globalThis.fetch = original;
     }
