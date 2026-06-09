@@ -71,6 +71,9 @@ export class PlaybookRun {
   /** Signal the current phase complete: evaluate its gate and apply the transition. */
   async advance(): Promise<RunStatus> {
     const phase = this._state.phase;
+    // Guard the terminal phase here so we never evaluate a gate past `Present`. This also
+    // means `step` is only called with a non-terminal phase, so its `noop` outcome (which
+    // it returns only at the terminal phase) is unreachable below — hence no `noop` case.
     if (nextPhase(this.deps.manifest, phase) === undefined) {
       this._status = { kind: "done", phase };
       return this._status;
@@ -97,9 +100,6 @@ export class PlaybookRun {
         break;
       case "paused":
         this._status = { kind: "awaiting-operator", phase, reason };
-        break;
-      case "noop":
-        this._status = { kind: "done", phase };
         break;
     }
     return this._status;
