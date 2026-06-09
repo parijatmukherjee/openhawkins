@@ -71,6 +71,12 @@ export class PlaybookRun {
   /** Signal the current phase complete: evaluate its gate and apply the transition. */
   async advance(): Promise<RunStatus> {
     const phase = this._state.phase;
+    // An escalated run is paused for an operator (spec §4): re-advancing it would just
+    // re-fail the same gate and pile up PhaseGateFailed entries, so it is a no-op until
+    // `override` resolves it.
+    if (this._status.kind === "escalated") {
+      return this._status;
+    }
     // Guard the terminal phase here so we never evaluate a gate past `Present`. This also
     // means `step` is only called with a non-terminal phase, so its `noop` outcome (which
     // it returns only at the terminal phase) is unreachable below — hence no `noop` case.
@@ -120,7 +126,7 @@ export class PlaybookRun {
     if (!grantSatisfies(this.deps.grant, { name: OVERRIDE_CAPABILITY })) {
       await this.deps.audit.append({
         kind: "PhaseOverrideDenied",
-        data: { phase, actor, reason, runId: this.deps.runId },
+        data: { phase, actor, reason, sessionId: this.deps.sessionId, runId: this.deps.runId },
         at: this.clock(),
       });
       return this._status;

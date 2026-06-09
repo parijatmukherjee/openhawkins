@@ -124,6 +124,15 @@ describe("PlaybookRun.advance", () => {
     const events = await phasesOf(d.store as InMemoryEventStore);
     expect(events[events.length - 1]).toBe("PhaseGateFailed:Validate");
     expect(await d.audit.verify()).toBe(true);
+
+    // re-advancing an escalated run is a no-op: it stays escalated and emits no new event
+    const countBefore = (await (d.store as InMemoryEventStore).read("s1")).length;
+    expect(await run.advance()).toEqual({
+      kind: "escalated",
+      phase: "Validate",
+      reason: "still red",
+    });
+    expect((await (d.store as InMemoryEventStore).read("s1")).length).toBe(countBefore);
   });
 
   it("advancing at the terminal phase is a no-op returning done", async () => {
