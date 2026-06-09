@@ -63,4 +63,17 @@ describe("ConverterRegistry", () => {
     expect(res.markdown).toBe("data");
     expect(res.warnings[0]).toMatch(/boom.*failed.*kaboom/);
   });
+
+  it("stringifies a non-Error value thrown by a converter", async () => {
+    const reg = new ConverterRegistry(textConverter).register({
+      format: "weird",
+      accepts: (d) => d.ext === "weird",
+      convert: async () => {
+        throw "just-a-string";
+      },
+    });
+    const res = await reg.convert({ data: "x", filename: "f.weird" });
+    expect(res.format).toBe("text");
+    expect(res.warnings[0]).toContain("just-a-string");
+  });
 });
