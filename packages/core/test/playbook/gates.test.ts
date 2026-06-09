@@ -23,17 +23,17 @@ describe("ValidateGate", () => {
   const ctx: GateContext = { phase: "Validate" };
 
   it("passes when the predicate reports ok", async () => {
-    const gate = new ValidateGate(async () => ({ ok: true }));
+    const gate: PhaseGate = new ValidateGate(async () => ({ ok: true }));
     expect(await gate.evaluate(ctx)).toEqual({ status: "passed" });
   });
 
   it("fails with the predicate's detail when it reports not ok", async () => {
-    const gate = new ValidateGate(async () => ({ ok: false, detail: "coverage 98%" }));
+    const gate: PhaseGate = new ValidateGate(async () => ({ ok: false, detail: "coverage 98%" }));
     expect(await gate.evaluate(ctx)).toEqual({ status: "failed", reason: "coverage 98%" });
   });
 
   it("fails with a default reason when not ok and no detail is given", async () => {
-    const gate = new ValidateGate(async () => ({ ok: false }));
+    const gate: PhaseGate = new ValidateGate(async () => ({ ok: false }));
     expect(await gate.evaluate(ctx)).toEqual({ status: "failed", reason: "validation failed" });
   });
 
@@ -41,7 +41,7 @@ describe("ValidateGate", () => {
     const boom: ValidatePredicate = async () => {
       throw new Error("gate command crashed");
     };
-    const gate = new ValidateGate(boom);
+    const gate: PhaseGate = new ValidateGate(boom);
     expect(await gate.evaluate(ctx)).toEqual({
       status: "failed",
       reason: "gate command crashed",
@@ -49,7 +49,7 @@ describe("ValidateGate", () => {
   });
 
   it("stringifies a non-Error thrown by the predicate", async () => {
-    const gate = new ValidateGate(async () => {
+    const gate: PhaseGate = new ValidateGate(async () => {
       throw "weird";
     });
     expect(await gate.evaluate(ctx)).toEqual({ status: "failed", reason: "weird" });

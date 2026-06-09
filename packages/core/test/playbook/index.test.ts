@@ -8,5 +8,11 @@ describe("@openhawkins/core playbook barrel", () => {
     expect(typeof playbook.isPhaseEvent).toBe("function");
     expect(typeof playbook.foldPlaybook).toBe("function");
     expect(typeof playbook.step).toBe("function");
+    expect(typeof playbook.SoftGate).toBe("function");
+    expect(typeof playbook.ValidateGate).toBe("function");
+    expect(typeof playbook.runCommand).toBe("function");
+    expect(typeof playbook.gateCommandPredicate).toBe("function");
+    expect(typeof playbook.npmExecutable).toBe("function");
+    expect(Array.isArray(playbook.DEFAULT_GATE_COMMANDS)).toBe(true);
   });
 });
