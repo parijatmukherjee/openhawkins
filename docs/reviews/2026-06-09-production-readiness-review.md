@@ -67,7 +67,7 @@ Several Criticals (F-C1, F-C3, F-C5) and Highs (F-H4, F-H5) are **explicit, docu
 
 Ordered by leverage (foundational first):
 
-1. **A1 — Durable persistence wired + integration-tested (F-C1).** Build a durable hash-chained `AuditLog` in `packages/state`; make `Agent`/`PlaybookRun`/`buildAgentRun` use `SqliteEventStore` + the durable audit; add an integration test proving replay + audit parity with the in-memory path. Enable WAL + `busy_timeout` (F-C5 partial). _Foundational — everything else builds on it._
+1. **A1 — Durable persistence wired + integration-tested (F-C1). ✅ DONE (PR pending).** Build a durable hash-chained `AuditLog` in `packages/state`; make `Agent`/`PlaybookRun`/`buildAgentRun` use `SqliteEventStore` + the durable audit; add an integration test proving replay + audit parity with the in-memory path. Enable WAL + `busy_timeout` (F-C5 partial). _Foundational — everything else builds on it._
 2. **A2 — Key the audit chain (F-C2, F-H3).** HMAC-SHA256 under a Cabin/keychain-held key; serialize appends inside the log; correct the docs. Add a concurrent-append test.
 3. **A3 — Redact the data plane + broaden patterns (F-C3).** Apply redaction at the event-store boundary; expand to real provider key shapes + JWT/PEM/high-entropy + a PII pass. Add a "planted secret never appears in events/audit" test.
 4. **A4 — Harden the model/IO boundary (F-C4, F-H1, F-M4).** Guard top-level `JSON.parse` (typed "non-JSON from provider" error); add `AbortController` timeouts + bounded retry/backoff to `generate` and `runCommand`; require `https` for non-loopback bases. Add fetch-rejection / non-JSON / timeout tests.
