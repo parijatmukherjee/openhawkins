@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { GENESIS, InMemoryAuditLog, hashEntry, mintAuditKey } from "../../src/security/audit.js";
+import {
+  GENESIS,
+  InMemoryAuditLog,
+  hashEntry,
+  mintAuditKey,
+  resolveAuditKey,
+} from "../../src/security/audit.js";
+import { InMemoryVault } from "../../src/security/vault.js";
 
 describe("InMemoryAuditLog (Murray)", () => {
   it("chains entries and verifies a clean log", async () => {
@@ -77,5 +84,15 @@ describe("keyed audit chain (HMAC)", () => {
     expect(k).toBeInstanceOf(Buffer);
     expect(k.length).toBe(32);
     expect(mintAuditKey().equals(k)).toBe(false);
+  });
+});
+
+describe("resolveAuditKey", () => {
+  it("mints + stores a key on first use and returns the SAME key thereafter", async () => {
+    const vault = new InMemoryVault();
+    const k1 = await resolveAuditKey(vault);
+    expect(k1.length).toBe(32);
+    const k2 = await resolveAuditKey(vault); // persisted -> identical
+    expect(k2.equals(k1)).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { redact } from "./redact.js";
+import type { Vault } from "./vault.js";
 
 /**
  * Murray — append-only, keyed-hash-chained audit (spec §8.5). Every grounding decision,
@@ -33,6 +34,24 @@ export const GENESIS = "0".repeat(64);
  *  chain after restart; an in-memory log mints an ephemeral one per instance. */
 export function mintAuditKey(): Buffer {
   return randomBytes(32);
+}
+
+/** The Vault key under which the audit HMAC key is stored. */
+const AUDIT_KEY_NAME = "audit:hmac-key";
+
+/**
+ * Load the persistent audit HMAC key from the Vault, minting + storing one on first use.
+ * A durable audit log MUST use this (not an ephemeral key) so its chain still verifies
+ * after a restart. The key lives in the Vault, never next to the log it protects.
+ */
+export async function resolveAuditKey(vault: Vault): Promise<Buffer> {
+  const existing = await vault.get(AUDIT_KEY_NAME);
+  if (existing !== null) {
+    return Buffer.from(existing, "hex");
+  }
+  const key = mintAuditKey();
+  await vault.set(AUDIT_KEY_NAME, key.toString("hex"));
+  return key;
 }
 
 /**
