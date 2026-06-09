@@ -41,15 +41,20 @@ export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgent
   const clock = opts.clock ?? systemClock;
   const store = new InMemoryEventStore();
   const audit = new InMemoryAuditLog();
+  // `Agent.start` derives its sessionId as `${agentId}-session`; we hand the PlaybookRun
+  // the same id so both stream into the one shared store/audit. Derive both from one
+  // constant so the shared-trace invariant can't drift across edits.
+  const agentId = "probe-agent";
+  const sessionId = `${agentId}-session`;
   const grant: AgentGrant = {
-    agentId: "probe-agent",
+    agentId,
     capabilities: [{ name: "host:info" }, { name: "playbook:override" }],
   };
 
   const registry = new ToolRegistry();
   registry.register(diskFreeTool);
   const agent = await Agent.start({
-    agentId: "probe-agent",
+    agentId,
     adapter: opts.adapter,
     registry,
     grant,
@@ -61,6 +66,9 @@ export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgent
     clock,
   });
 
+  // `exactOptionalPropertyTypes` makes the prompt values `string` (an explicit `undefined`
+  // is a type error), and `Object.entries` only yields present keys — so the cast refines
+  // the key to `Phase` with no `undefined` value to guard against.
   const handlers: Partial<Record<Phase, PhaseHandler>> = {};
   for (const [phase, prompt] of Object.entries(opts.prompts) as [Phase, string][]) {
     handlers[phase] = async () => void (await agent.ask(prompt));
@@ -70,8 +78,8 @@ export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgent
     opts.validateGate ?? new ValidateGate(gateCommandPredicate(DEFAULT_GATE_COMMANDS));
   const playbook = await PlaybookRun.start({
     manifest: DEFAULT_MANIFEST,
-    sessionId: "probe-agent-session",
-    runId: "probe-agent-run",
+    sessionId,
+    runId: `${agentId}-run`,
     store,
     audit,
     grant,
