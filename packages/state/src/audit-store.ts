@@ -94,6 +94,13 @@ export class SqliteAuditLog implements AuditLog {
     }));
   }
 
+  /**
+   * Returns `false` for ANY HMAC mismatch, so reopening the log with the WRONG key is
+   * currently INDISTINGUISHABLE from tampering, and rotating the audit key invalidates
+   * verification of all pre-rotation entries (every prior hash was computed under the old
+   * key). Diagnostics that separate "wrong key" from "tampered", plus a key-rotation /
+   * per-entry keyId path, are tracked as A2c.
+   */
   async verify(): Promise<boolean> {
     let prev = GENESIS;
     for (const e of await this.entries()) {
