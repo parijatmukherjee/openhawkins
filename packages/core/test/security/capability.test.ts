@@ -33,3 +33,12 @@ describe("grantSatisfies (The Lab)", () => {
     );
   });
 });
+
+describe("playbook:override capability", () => {
+  it("is satisfiable by a matching grant and denied by default", () => {
+    const granted = { agentId: "op", capabilities: [{ name: "playbook:override" as const }] };
+    expect(grantSatisfies(granted, { name: "playbook:override" })).toBe(true);
+    const empty = { agentId: "op", capabilities: [] };
+    expect(grantSatisfies(empty, { name: "playbook:override" })).toBe(false);
+  });
+});
