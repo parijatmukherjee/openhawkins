@@ -55,7 +55,7 @@ accept-or-reprompt. Initial sketch (to be refined):
 | Plan     | a design/implementation plan artifact exists and is approved.                |
 | Tasks    | the plan is decomposed into discrete, tracked tasks.                         |
 | Execute  | every task reports complete (and committed).                                 |
-| Validate | the gate is green — build · lint · format · coverage(>99%) · tests · docker. |
+| Validate | the gate is green — build · lint · format · coverage(≥99%) · tests · docker. |
 | Present  | a PR/summary is produced; control returns to the human.                      |
 
 The runtime owns each predicate; the model cannot self-certify a phase complete.
