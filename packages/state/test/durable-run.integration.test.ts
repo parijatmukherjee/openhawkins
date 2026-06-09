@@ -9,6 +9,7 @@ import {
   ValidateGate,
   isPhaseEvent,
   foldPlaybook,
+  mintAuditKey,
   type PhaseEvent,
 } from "@openhawkins/core";
 import { openDatabase, SqliteEventStore, SqliteAuditLog } from "../src/index.js";
@@ -22,11 +23,12 @@ const approvals = () =>
 describe("durable run — replay + audit parity across a reopen", () => {
   it("persists the run to SQLite; a reopened store replays it and the audit verifies", async () => {
     const dbPath = join(mkdtempSync(join(tmpdir(), "oh-a1-")), "run.db");
+    const KEY = mintAuditKey();
 
     // 1) run against a durable store+audit over one shared db file
     const db = openDatabase({ path: dbPath });
     const store = new SqliteEventStore(db);
-    const audit = new SqliteAuditLog(db);
+    const audit = new SqliteAuditLog(db, KEY);
     const built = await buildAgentRun({
       adapter: weakHostFactsModel(tmpdir()),
       grounding: "cited",
@@ -44,7 +46,7 @@ describe("durable run — replay + audit parity across a reopen", () => {
     // 2) REOPEN the same file with fresh stores — durability proof
     const db2 = openDatabase({ path: dbPath });
     const store2 = new SqliteEventStore(db2);
-    const audit2 = new SqliteAuditLog(db2);
+    const audit2 = new SqliteAuditLog(db2, KEY);
 
     const replayedEvents = await store2.read("probe-agent-session");
     expect(replayedEvents).toEqual(liveEvents); // events survived the reopen

@@ -25,6 +25,11 @@ interface AuditRow {
  * `InMemoryAuditLog`, so a durable log verifies the same way. `seq`/`prevHash` are read
  * from the persisted tail (not an in-memory counter).
  *
+ * Keying (F-C2): the chain is an HMAC under a caller-supplied PERSISTENT `key`, so it is
+ * tamper-proof against anyone without that key (an attacker who edits a row can't forge a
+ * matching hash). The key is durable state owned by the caller, NOT derived per-instance:
+ * a reopened log MUST be given the SAME key to verify a chain written earlier under it.
+ *
  * Concurrency (review F-H3): appends through ONE instance are serialized by the `tail`
  * promise-chain, so the tail-read→insert critical section can't interleave and fork the
  * chain. Across SEPARATE instances over the same DB, single-writer is the contract; the
@@ -34,14 +39,16 @@ interface AuditRow {
  */
 export class SqliteAuditLog implements AuditLog {
   private readonly db: SqlDriver;
+  private readonly key: Buffer;
   private readonly insertStmt: SqlStatement;
   private readonly tailStmt: SqlStatement;
   private readonly allStmt: SqlStatement;
   /** Serializes appends: each waits for the prior so tail reads never race. */
   private tail: Promise<unknown> = Promise.resolve();
 
-  constructor(db: SqlDriver) {
+  constructor(db: SqlDriver, key: Buffer) {
     this.db = db;
+    this.key = key;
     migrate(db, SCHEMA);
     this.insertStmt = db.prepare(
       "INSERT INTO audit (seq, at, kind, data, prev_hash, hash) VALUES (?, ?, ?, ?, ?, ?)",
@@ -52,8 +59,8 @@ export class SqliteAuditLog implements AuditLog {
     );
   }
 
-  static open(path: string): SqliteAuditLog {
-    return new SqliteAuditLog(openDatabase({ path }));
+  static open(path: string, key: Buffer): SqliteAuditLog {
+    return new SqliteAuditLog(openDatabase({ path }), key);
   }
 
   append(input: AuditInput): Promise<AuditEntry> {
@@ -71,7 +78,7 @@ export class SqliteAuditLog implements AuditLog {
     const prevHash = tip === undefined ? GENESIS : tip.hash;
     const data = redact(input.data) as Record<string, unknown>;
     const base = { seq, at: input.at, kind: input.kind, data };
-    const hash = hashEntry(prevHash, base);
+    const hash = hashEntry(this.key, prevHash, base);
     this.insertStmt.run(seq, input.at, input.kind, JSON.stringify(data), prevHash, hash);
     return { ...base, prevHash, hash };
   }
@@ -87,13 +94,22 @@ export class SqliteAuditLog implements AuditLog {
     }));
   }
 
+  /**
+   * Returns `false` for ANY HMAC mismatch, so reopening the log with the WRONG key is
+   * currently INDISTINGUISHABLE from tampering, and rotating the audit key invalidates
+   * verification of all pre-rotation entries (every prior hash was computed under the old
+   * key). Diagnostics that separate "wrong key" from "tampered", plus a key-rotation /
+   * per-entry keyId path, are tracked as A2c.
+   */
   async verify(): Promise<boolean> {
     let prev = GENESIS;
     for (const e of await this.entries()) {
       if (e.prevHash !== prev) {
         return false;
       }
-      if (e.hash !== hashEntry(prev, { seq: e.seq, at: e.at, kind: e.kind, data: e.data })) {
+      if (
+        e.hash !== hashEntry(this.key, prev, { seq: e.seq, at: e.at, kind: e.kind, data: e.data })
+      ) {
         return false;
       }
       prev = e.hash;

@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
+import { mintAuditKey } from "@openhawkins/core";
 import { openDatabase } from "../src/driver/driver.js";
 import { SqliteAuditLog } from "../src/audit-store.js";
 
-const fresh = () => new SqliteAuditLog(openDatabase({ path: ":memory:" }));
+const KEY = mintAuditKey();
+const fresh = () => new SqliteAuditLog(openDatabase({ path: ":memory:" }), KEY);
 
 describe("SqliteAuditLog", () => {
   it("appends a hash-chained entry and verifies", async () => {
@@ -33,9 +35,9 @@ describe("SqliteAuditLog", () => {
 
   it("rebuilds the chain tail from persistence (a reopened log continues the chain)", async () => {
     const db = openDatabase({ path: ":memory:" });
-    const a1 = new SqliteAuditLog(db);
+    const a1 = new SqliteAuditLog(db, KEY);
     await a1.append({ kind: "A", data: {}, at: 1 });
-    const a2 = new SqliteAuditLog(db);
+    const a2 = new SqliteAuditLog(db, KEY);
     const e = await a2.append({ kind: "B", data: {}, at: 2 });
     expect(e.seq).toBe(1);
     expect(e.prevHash).toBe((await a1.entries())[0].hash);
@@ -54,7 +56,7 @@ describe("SqliteAuditLog", () => {
 
   it("verify() returns false if a persisted row is tampered", async () => {
     const db = openDatabase({ path: ":memory:" });
-    const a = new SqliteAuditLog(db);
+    const a = new SqliteAuditLog(db, KEY);
     await a.append({ kind: "A", data: { v: 1 }, at: 1 });
     db.prepare("UPDATE audit SET data = ? WHERE seq = 0").run(JSON.stringify({ v: 999 }));
     expect(await a.verify()).toBe(false);
@@ -62,14 +64,14 @@ describe("SqliteAuditLog", () => {
 
   it("verify() returns false if a persisted prev_hash is broken", async () => {
     const db = openDatabase({ path: ":memory:" });
-    const a = new SqliteAuditLog(db);
+    const a = new SqliteAuditLog(db, KEY);
     await a.append({ kind: "A", data: {}, at: 1 });
     db.prepare("UPDATE audit SET prev_hash = ? WHERE seq = 0").run("f".repeat(64));
     expect(await a.verify()).toBe(false);
   });
 
   it("opens from a path and closes cleanly", async () => {
-    const a = SqliteAuditLog.open(":memory:");
+    const a = SqliteAuditLog.open(":memory:", KEY);
     const e = await a.append({ kind: "A", data: {}, at: 1 });
     expect(e.seq).toBe(0);
     a.close();

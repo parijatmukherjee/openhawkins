@@ -42,8 +42,13 @@ connect and `evolve` fragments_ that are later recalled into agent context.
 - 🟡 **Eleven (grounding):** even a wrong fragment is only a _hint_ —
   grounding-required tasks must verify via tools, so poisoned memory cannot
   directly produce a fabricated action.
-- 🟡 **Murray (tamper-evident audit):** every write/evolve is hash-chained, so a
-  poisoned fragment is attributable and revertible (spec §5.5.5).
+- 🟡 **Murray (keyed-audit chain):** every write/evolve is chained with a keyed
+  HMAC-SHA256 under a Cabin/Vault-held key, so the chain is **tamper-proof against a
+  writer who does not hold that key** — a poisoned fragment is attributable and
+  revertible (spec §5.5.5). It degrades to corruption-detection only if an attacker
+  compromises BOTH the log and the key (e.g. full host + Vault compromise); external
+  anchoring (publishing the chain head to an append-only external store) for evidence
+  even under full host compromise is future work (**A2b**).
 - 🟡 If networked memory is ever enabled (multi-host), bearer/mTLS + loopback
   binding is **mandatory, not optional**.
 
