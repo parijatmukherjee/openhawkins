@@ -3,7 +3,8 @@ import type { Provenance } from "@openhawkins/core";
 import { type SqlDriver, type SqlStatement, openDatabase, migrate } from "@openhawkins/state";
 import type { Fragment, ScoredFragment } from "./fragment.js";
 import { MEMORY_SCHEMA } from "./schema.js";
-import { type Candidate, rankCandidates, toMatchQuery } from "./recall.js";
+import { type Candidate, rankCandidates, toMatchQuery, bm25ToRelevance } from "./recall.js";
+import { cosineSimilarity, type Embedder } from "./embedder.js";
 
 export interface RememberInput {
   text: string;
@@ -43,18 +44,21 @@ interface FragmentRow {
 export class VecnaStore {
   private readonly db: SqlDriver;
   private readonly nextId: () => string;
+  private readonly embedder: Embedder | undefined;
   private readonly insertStmt: SqlStatement;
   private readonly matchStmt: SqlStatement;
+  private readonly loadEmbeddedStmt: SqlStatement;
   private readonly reinforceStmt: SqlStatement;
 
-  constructor(db: SqlDriver, opts: { id?: () => string } = {}) {
+  constructor(db: SqlDriver, opts: { id?: () => string; embedder?: Embedder } = {}) {
     this.db = db;
     this.nextId = opts.id ?? (() => randomUUID());
+    this.embedder = opts.embedder;
     migrate(db, MEMORY_SCHEMA);
     this.insertStmt = db.prepare(
       `INSERT INTO fragments
-         (id, text, tendril, tags, importance, trust, taint, created_at, last_used_at, uses)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+         (id, text, tendril, tags, importance, trust, taint, created_at, last_used_at, uses, embedding)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
     );
     // FTS5 candidate query: join the matched rowids back to the full fragment rows.
     // Candidate set is every FTS5 match (no LIMIT) — fine at S2 store sizes; a
@@ -66,6 +70,7 @@ export class VecnaStore {
          JOIN fragments f ON f.rowid = fragments_fts.rowid
         WHERE fragments_fts MATCH ?`,
     );
+    this.loadEmbeddedStmt = db.prepare(`SELECT f.* FROM fragments f WHERE f.embedding IS NOT NULL`);
     this.reinforceStmt = db.prepare(
       `UPDATE fragments
           SET importance = MAX(0.0, MIN(1.0, importance + ?)), uses = uses + 1, last_used_at = ?
@@ -73,7 +78,7 @@ export class VecnaStore {
     );
   }
 
-  static open(path: string, opts: { id?: () => string } = {}): VecnaStore {
+  static open(path: string, opts: { id?: () => string; embedder?: Embedder } = {}): VecnaStore {
     return new VecnaStore(openDatabase({ path }), opts);
   }
 
@@ -91,6 +96,11 @@ export class VecnaStore {
       lastUsedAt: now,
       uses: 0,
     };
+    let embedding: Buffer | null = null;
+    if (this.embedder) {
+      const vec = await this.embedder.embed(fragment.text);
+      embedding = Buffer.from(vec.buffer, vec.byteOffset, vec.byteLength);
+    }
     this.insertStmt.run(
       fragment.id,
       fragment.text,
@@ -101,23 +111,61 @@ export class VecnaStore {
       fragment.taint ? 1 : 0,
       fragment.createdAt,
       fragment.lastUsedAt,
+      embedding,
     );
     return fragment;
   }
 
   async recall(query: RecallQuery): Promise<ScoredFragment[]> {
-    const match = toMatchQuery(query.text);
-    if (match === null) {
-      return [];
-    }
-    const rows = this.matchStmt.all(match) as (FragmentRow & { bm25: number })[];
-    const candidates: Candidate[] = rows.map((r) => ({ fragment: rowToFragment(r), bm25: r.bm25 }));
     const ctx = {
       now: query.now,
       ...(query.tags !== undefined ? { tags: query.tags } : {}),
       ...(query.tendril !== undefined ? { tendril: query.tendril } : {}),
     };
-    return rankCandidates(candidates, ctx, query.k ?? 5);
+    const k = query.k ?? 5;
+
+    if (this.embedder) {
+      // Load rows BEFORE embedding the query: embedding is the expensive op
+      // (a neural-net forward pass for a real embedder), so a cold/empty store
+      // must not pay for it. Do NOT reorder to embed-first.
+      const rows = this.loadEmbeddedStmt.all() as (FragmentRow & { embedding: Uint8Array })[];
+      if (rows.length === 0) {
+        return [];
+      }
+      const qvec = await this.embedder.embed(query.text);
+      if (isZeroVector(qvec)) {
+        return [];
+      }
+      // Invariant: a store is used with a single embedder for its lifetime. If a
+      // persisted store is reopened with a different-dimension embedder, rows whose
+      // stored vector has the wrong byte length are skipped rather than crashing
+      // cosineSimilarity. (Switching embedders requires re-embedding the fragments.)
+      const expectedBytes = this.embedder.dims * 4;
+      const candidates: Candidate[] = rows
+        .filter((r) => r.embedding.byteLength === expectedBytes)
+        .map((r) => ({
+          fragment: rowToFragment(r),
+          // clamp cosine to [0,1] so the text term shares scale with the lexical path
+          // (a real embedder can return a negative cosine for dissimilar text).
+          relevance: Math.max(0, cosineSimilarity(qvec, blobToVec(r.embedding))),
+        }))
+        // drop fragments with no semantic overlap so vector recall (like lexical)
+        // returns nothing rather than a freshness-sorted dump when nothing matches.
+        // A configurable min-relevance threshold is a future tuning knob (S2.4).
+        .filter((c) => c.relevance > 0);
+      return rankCandidates(candidates, ctx, k);
+    }
+
+    const match = toMatchQuery(query.text);
+    if (match === null) {
+      return [];
+    }
+    const rows = this.matchStmt.all(match) as (FragmentRow & { bm25: number })[];
+    const candidates: Candidate[] = rows.map((r) => ({
+      fragment: rowToFragment(r),
+      relevance: bm25ToRelevance(r.bm25),
+    }));
+    return rankCandidates(candidates, ctx, k);
   }
 
   async reinforce(id: string, delta: number, now: number = Date.now()): Promise<void> {
@@ -144,4 +192,18 @@ function rowToFragment(r: FragmentRow): Fragment {
     lastUsedAt: r.last_used_at,
     uses: r.uses,
   };
+}
+
+/** True when every component of the vector is exactly 0 (no semantic signal). */
+function isZeroVector(v: Float32Array): boolean {
+  return v.every((x) => x === 0);
+}
+
+/**
+ * Reconstruct a Float32 vector from a SQLite BLOB. `.slice()` yields a fresh,
+ * 4-byte-aligned, exactly-sized buffer (SQLite may hand back an unaligned view).
+ */
+function blobToVec(blob: Uint8Array): Float32Array {
+  const copy = blob.slice();
+  return new Float32Array(copy.buffer);
 }

@@ -38,4 +38,9 @@ export const MEMORY_SCHEMA: Migration[] = [
       END;
     `,
   },
+  {
+    version: 2,
+    name: "fragment-embedding",
+    up: `ALTER TABLE fragments ADD COLUMN embedding BLOB;`,
+  },
 ];

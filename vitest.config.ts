@@ -11,6 +11,10 @@ export default defineConfig({
         // in a separate process, so they cannot be instrumented by the in-process
         // unit run — they are covered end-to-end (test-functional/*.e2e.test.ts).
         "packages/*/src/bin/**",
+        // Optional-peer-backed embedder: only runs when @huggingface/transformers is
+        // installed; excluded from the coverage gate (lazy import, never executed in
+        // the in-process unit suite without the optional package).
+        "packages/*/src/transformers-embedder.ts",
         // Runtime-selection glue: thin dispatch that picks a concrete driver at
         // startup based on env vars — tested end-to-end, not unit-instrumented.
         "packages/*/src/driver/select.ts",

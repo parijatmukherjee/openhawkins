@@ -28,9 +28,10 @@
    **zero caller changes**.
 3. **VECNA store** (`@openhawkins/memory`): decay-aware memory `fragments` —
    `remember` / `recall` / `reinforce`, blended ranking, taint-aware down-ranking.
-4. **Embeddings:** an `Embedder` port (default `OllamaEmbedder`, reusing the S1
-   model layer) + **sqlite-vec** vector recall, with **FTS5 + decay lexical
-   fallback** whenever the extension or embedder is unavailable.
+4. **Embeddings:** an `Embedder` port (built-in `FakeEmbedder`; optional real
+   `TransformersEmbedder`) + **pure-JS cosine** vector recall over Float32 BLOBs
+   (works on Node, Bun, and the binary), with **FTS5 + decay lexical fallback**
+   whenever no embedder is configured (see §9, decision §12.2).
 5. **Auto-injection + write-back:** a `MemoryPort` interface in `@openhawkins/core`
    and its use inside `Agent.ask` (recall → inject before the turn; write-back →
    `reinforce` after acceptance). Proven end-to-end by a "remembers across process
@@ -60,10 +61,10 @@
   state from disk, with no change to S1 callers.
 - A grounded fact written to VECNA in one turn is **automatically recalled and
   injected** into a later turn — the model never calls a memory tool.
-- Recall **degrades gracefully**: vector recall when sqlite-vec + an embedder are
-  present; lexical (FTS5) + decay otherwise. The system is always functional.
-- Determinism preserved: tests run against real SQLite (temp files) with an
-  injected, deterministic embedder; live embeddings/vec are opt-in.
+- Recall **degrades gracefully**: pure-JS cosine vector recall when an embedder is
+  configured; lexical (FTS5) + decay otherwise. The system is always functional.
+- Determinism preserved: tests run against real SQLite (temp files) with the
+  built-in deterministic `FakeEmbedder`; the real `TransformersEmbedder` is opt-in.
 
 **Non-goals**
 
@@ -94,9 +95,9 @@ AND    the entire flow passes on Windows, macOS, and Linux under the >99% covera
        gate, with a black-box functional test proving cross-process persistence.
 ```
 
-A companion **opt-in live test** (`OPENHAWKINS_OLLAMA_E2E=1`, real Ollama +
-sqlite-vec present) exercises true semantic recall; CI uses the deterministic
-fake embedder and the lexical fallback.
+A companion **opt-in test** (with `@huggingface/transformers` installed) exercises
+true semantic recall via the real `TransformersEmbedder`; CI uses the deterministic
+built-in `FakeEmbedder` across the full vector pipeline.
 
 ---
 
@@ -121,9 +122,9 @@ packages/state/                       # VINES — persistence foundation
 packages/memory/                      # VECNA — decay-aware memory
   src/
     fragment.ts        # Fragment type + Zod schema
-    embedder.ts        # Embedder port + OllamaEmbedder + FakeEmbedder (tests)
-    vec-extension.ts   # resolve + load sqlite-vec (sidecar); availability probe
-    recall.ts          # blended scoring (vec + bm25 + importance*decay + tags)
+    embedder.ts        # Embedder port + FakeEmbedder + cosineSimilarity
+    transformers-embedder.ts  # real TransformersEmbedder (optional peer dep)
+    recall.ts          # blended scoring (relevance + importance*decay + tags)
     store.ts           # VecnaStore: remember / recall / reinforce
     memory-port.ts     # adapter: VecnaStore -> core MemoryPort
     index.ts
@@ -136,9 +137,8 @@ packages/core/src/
 
 **Responsibility boundaries:** `driver` knows only SQLite; `migrate` knows only
 schema versioning; `event-store` adapts the log to a table; `embedder` knows only
-text→vector; `vec-extension` knows only loading sqlite-vec; `recall` is pure
-scoring; `store` orchestrates; `memory-port` adapts to core's interface. Each is
-independently testable.
+text→vector (+ cosine); `recall` is pure scoring; `store` orchestrates; `memory-port`
+adapts to core's interface. Each is independently testable.
 
 ---
 
@@ -160,7 +160,7 @@ export interface SqlStatement {
 export interface SqlDriver {
   exec(sql: string): void; // multi-statement DDL/pragmas
   prepare(sql: string): SqlStatement;
-  loadExtension(path: string): void; // sqlite-vec (best-effort)
+  loadExtension(path: string): void; // generic; unused by memory (pure-JS vectors)
   transaction<T>(fn: () => T): T; // wraps BEGIN/COMMIT/ROLLBACK
   close(): void;
 }
@@ -260,10 +260,10 @@ interface Fragment {
 }
 ```
 
-Schema (migration v2): the `fragments` table above + an FTS5 virtual table
-`fragments_fts(text, content='fragments', content_rowid='rowid')` kept in sync by
-triggers. The vector table (`fragments_vec`) is created **only if** sqlite-vec
-loaded (§9).
+Schema: migration **v1** (S2.2) creates the `fragments` table + the FTS5 virtual
+table `fragments_fts(text, content='fragments', content_rowid='rowid')` kept in sync
+by triggers. Migration **v2** (S2.3) adds a nullable `embedding BLOB` column for the
+JS-cosine vector path (§9.2) — no separate vector table.
 
 ### 8.2 API
 
@@ -309,6 +309,14 @@ from a reused/approved fragment, which S3 will drive from approval/audit outcome
 
 ## 9. Embeddings + recall (S2.3)
 
+> **Pivot (2026-06-09):** S2.3 uses **pure-JS embeddings + JS cosine similarity over
+> Float32 BLOBs**, not the native `sqlite-vec` extension. Grounding spikes showed
+> `bun:sqlite` refuses to load dynamic extensions ("this build of sqlite3 does not
+> support dynamic extension loading"), so sqlite-vec would only work under the Node
+> runtime — the shipped **Bun binary** would silently fall back to lexical. A pure-JS
+> path works **identically on Node and Bun** (and the binary), at the cost of
+> brute-force similarity (fine at S2 store sizes). See decision §12.2.
+
 ### 9.1 Embedder port
 
 ```ts
@@ -318,31 +326,38 @@ interface Embedder {
 }
 ```
 
-- **`OllamaEmbedder`** (default) calls Ollama's embeddings endpoint
-  (`/api/embed`, default model `nomic-embed-text`) via the existing S1 HTTP seam —
-  **no new model dependency** beyond the already-mandatory Ollama. OpenAI-compatible
-  embeddings are an easy later add behind the same port.
-- **`FakeEmbedder`** (test infra, like S1's `ScriptedAdapter`): deterministic
-  mapping from text → vector, so recall-ranking tests are reproducible offline.
+- **`FakeEmbedder`** (built-in, zero-dependency): a deterministic text → vector hash.
+  Powers reproducible recall tests **and the >99% coverage gate** on the full vector
+  pipeline under both Node and Bun (no model download, no network).
+- **`TransformersEmbedder`** (real, production): wraps `@huggingface/transformers`
+  (e.g. `all-MiniLM-L6-v2`, 384-dim) running on ONNX/WASM — self-contained, so it
+  works in the shipped binary with no external service and no native extension.
+  `@huggingface/transformers` is an **optional peer dependency** (lazy-imported; a
+  clear error if absent) so it never bloats CI; its file is coverage-excluded and
+  exercised by **opt-in** tests, mirroring S1's live-Ollama pattern.
+- `cosineSimilarity(a, b)` is a pure helper shared by the store.
 
-### 9.2 sqlite-vec loading (sidecar)
+### 9.2 Embedding storage
 
-`vec-extension.ts` resolves the loadable extension in order: (1) `OPENHAWKINS_SQLITE_VEC`
-env override → (2) next to the running binary → (3) the `sqlite-vec` npm package
-(dev). It probes load success; on **any** failure it returns
-`{ available: false }` and the store proceeds in lexical mode. The Bun
-single-binary ships the extension as a **sidecar file** (installer-placed or
-first-run downloaded to `dataDir()`), never embedded — so the binary always runs
-even without it.
+Migration **v2** adds a nullable `embedding BLOB` column to `fragments`. On
+`remember`, when an embedder is configured, the store stores
+`Buffer.from(embedder.embed(text).buffer)`; rows reconstruct via
+`new Float32Array(blob.buffer, blob.byteOffset, dims)`. Fragments written without an
+embedder have `embedding = NULL` and are only reachable via the lexical path.
 
 ### 9.3 Recall path
 
-- **Vector mode** (extension + embedder available): embed the query, ANN/`vec`
-  search for the top candidates, then **re-rank** with the §8.3 blended score
-  (vector similarity contributes `vecSim`).
-- **Lexical fallback** (no extension or embedder error): FTS5 BM25 over `text` +
-  tag overlap + decay (the `vecSim` term drops to 0). Same `recall()` signature
-  and ranking shape — callers can't tell which path ran except via a logged note.
+- **Vector mode** (an embedder is configured): embed the query, **brute-force
+  cosine** over every fragment with an embedding, and feed each as a `Candidate`
+  whose `relevance` is its cosine similarity. Brute force is O(n) per query —
+  acceptable at S2 store sizes; an ANN index is a later optimization.
+- **Lexical fallback** (no embedder): the S2.2 path — FTS5 `MATCH` → candidates whose
+  `relevance` derives from `bm25`.
+- Both modes feed the **same** §8.3 blended scorer. To unify them, `Candidate`
+  carries a normalized `relevance` (higher = better) instead of a raw `bm25`; the
+  store computes `relevance` per mode (cosine, or a transform of `bm25`). The
+  `recall()` signature and ranking shape are identical — callers can't tell which
+  path ran except via a logged note.
 
 ---
 
@@ -381,18 +396,18 @@ never imports `memory`. The slice (§3) proves recall-across-restart end-to-end.
   in Node 24 (experimental behind a flag in 22.5+). Bun unchanged (`bun:sqlite` is
   always present); the bun CI job and `--compile` path are unaffected.
 - **Error handling / graceful degradation:**
-  - No sqlite-vec or embedder error → lexical recall, logged once. Never a crash.
+  - No embedder configured → lexical (FTS5) recall. Never a crash.
   - DB writes go through `db.transaction`; a failed migration rolls back.
   - A corrupt/unreadable DB is **surfaced** (thrown), never silently recreated —
     we don't destroy a user's data to "recover."
   - Embedding/recall failures inside `Agent.ask` are non-fatal: the turn proceeds
     without injected memory rather than failing the user's request.
-- **Coverage:** the **>99% gate stays**. Real `node:sqlite` temp-file DBs, injected
-  `FakeEmbedder` for deterministic ranking, opt-in live Ollama/sqlite-vec, and a
-  black-box functional test for cross-process persistence. The sqlite-vec loader's
-  "extension absent" branch is the default in CI and is covered; the "present"
-  branch is covered by the opt-in live path (and excluded from the line gate only
-  if it requires the native extension, like `bin/**`).
+- **Coverage:** the **>99% gate stays**. Real SQLite temp-file DBs and the built-in
+  deterministic `FakeEmbedder` cover the **full vector pipeline** (embed → store BLOB
+  → cosine → rank) under both Node and Bun — no native extension, no model download.
+  The lexical-fallback path (no embedder) is covered too. The real
+  `TransformersEmbedder` (`@huggingface/transformers`, optional peer dep) is
+  coverage-excluded and exercised by **opt-in** tests (like S1's live-Ollama).
 
 ---
 
@@ -403,10 +418,16 @@ never imports `memory`. The slice (§3) proves recall-across-restart end-to-end.
    clean (ADR 0001). Cost accepted: **Node 24**. Native `better-sqlite3` and WASM
    SQLite were considered and rejected (CI/binary-bundling risk; perf/durability,
    respectively).
-2. **Embeddings now, via sqlite-vec + an `Embedder` port**, default
-   `OllamaEmbedder` (reuse the mandatory Ollama; no bundled model). Pure-JS/WASM
-   embeddings rejected for S2 (weight/perf). **Lexical FTS5 + decay is the
-   always-available fallback**, so the choice never makes the system unusable.
+2. **Embeddings now, via pure-JS vectors + JS cosine over Float32 BLOBs**
+   (revised 2026-06-09). The original plan (sqlite-vec native extension +
+   `OllamaEmbedder`) was **rejected once grounding showed `bun:sqlite` cannot load
+   dynamic extensions** — sqlite-vec would only work under Node, leaving the shipped
+   Bun binary on lexical recall. A pure-JS path (brute-force cosine, a built-in
+   deterministic `FakeEmbedder`, and an optional `TransformersEmbedder` for a real
+   self-contained model) works **identically on Node, Bun, and the binary**, fully
+   CI-tested. **Lexical FTS5 + decay remains the always-available fallback** when no
+   embedder is configured. Trade-off accepted: brute-force O(n) similarity (fine at
+   S2 store sizes; ANN is a later optimization).
 3. **Full S2 + wire into the S1 Agent.** Build VINES + VECNA and prove them
    through `Agent.ask` end-to-end this round; per-Tendril specialization waits for
    S3 (the `tendril` tag and `reinforce` API ship now).
@@ -425,8 +446,9 @@ never imports `memory`. The slice (§3) proves recall-across-restart end-to-end.
    replay-across-reopen acceptance.
 3. **S2.2** — VECNA `fragments` schema + `remember`/`recall` (FTS5 + decay) +
    `reinforce`; pure ranking unit tests.
-4. **S2.3** — `Embedder` port (`OllamaEmbedder` + `FakeEmbedder`) + sqlite-vec
-   loader + blended vector recall with lexical fallback.
+4. **S2.3** — `Embedder` port (built-in `FakeEmbedder`; optional `TransformersEmbedder`)
+   - pure-JS cosine vector recall over Float32 BLOBs (migration v2) with FTS5 lexical
+     fallback; `Candidate` generalized to a normalized `relevance`.
 5. **S2.4** — core `MemoryPort` + `Agent.ask` auto-injection & write-back; the
    "remembers across restart" slice + black-box functional test; green on 3 OSes
    under the >99% coverage gate.

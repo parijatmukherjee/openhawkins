@@ -16,5 +16,13 @@
   "dependencies": {
     "@openhawkins/core": "*",
     "@openhawkins/state": "*"
+  },
+  "peerDependencies": {
+    "@huggingface/transformers": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@huggingface/transformers": {
+      "optional": true
+    }
   }
 }
