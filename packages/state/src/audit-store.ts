@@ -27,9 +27,10 @@ interface AuditRow {
  *
  * Concurrency (review F-H3): appends through ONE instance are serialized by the `tail`
  * promise-chain, so the tail-read→insert critical section can't interleave and fork the
- * chain. Across SEPARATE instances over the same DB the runtime is assumed single-writer;
- * if two instances did race, the app-assigned `seq` PRIMARY KEY rejects the duplicate
- * insert (a hard error, not silent corruption) — it is the cross-instance backstop.
+ * chain. Across SEPARATE instances over the same DB, single-writer is the contract; the
+ * `seq` PRIMARY KEY only rejects a duplicate insert when two racers compute the SAME `seq`
+ * (a hard error, not silent corruption), and `verify()` is the catch-all that detects any
+ * cross-instance fork after the fact. The durable single-writer cutover is tracked in A1b.
  */
 export class SqliteAuditLog implements AuditLog {
   private readonly db: SqlDriver;
