@@ -22,10 +22,17 @@ const PATH = tmpdir();
 // deterministic-replay mechanism (§7.2).
 
 describe("the hallucination test (cited grounding)", () => {
-  const scenario = (): Scenario => ({
+  // `diskFree` (when set) pins the tool's number so the determinism test is reproducible;
+  // the headline test omits it and exercises the REAL disk read.
+  const scenario = (diskFree?: number): Scenario => ({
     name: "host-facts/cited",
     prompt: PROMPT,
-    agent: () => buildProbeAgent({ adapter: weakHostFactsModel(PATH), grounding: "cited" }),
+    agent: () =>
+      buildProbeAgent({
+        adapter: weakHostFactsModel(PATH),
+        grounding: "cited",
+        ...(diskFree !== undefined ? { diskFree } : {}),
+      }),
     assertions: [
       issuedCorrection(), // the pre-tool guess was REJECTED
       calledToolSuccessfully("disk_free"), // it was forced to call the real tool
@@ -47,9 +54,13 @@ describe("the hallucination test (cited grounding)", () => {
   });
 
   it("is deterministic — same scenario replays to an identical decision trace", async () => {
-    const a = await runScenario(scenario());
-    const b = await runScenario(scenario());
+    // Pin the disk number so the run is fully reproducible: the model is scripted and
+    // Eleven is deterministic, so the only live input is the real disk's free bytes,
+    // which drift between calls. A fixed tool result isolates replay determinism.
+    const a = await runScenario(scenario(123_456_789));
+    const b = await runScenario(scenario(123_456_789));
     expect(a.record.final).toBe(b.record.final);
+    expect(a.record.final).toContain("123456789 bytes are free");
     expect(a.record.corrections).toEqual(b.record.corrections);
     expect(a.record.modelCalls.length).toBe(b.record.modelCalls.length);
   });

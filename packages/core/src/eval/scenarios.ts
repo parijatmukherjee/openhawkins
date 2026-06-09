@@ -2,27 +2,43 @@ import type { ModelAdapter } from "../models/adapter.js";
 import { ScriptedAdapter } from "../models/scripted.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { diskFreeTool } from "../tools/disk-free.js";
+import type { ToolDefinition } from "../tools/tool.js";
 import type { GroundingMode } from "../grounding/eleven.js";
 import { Agent } from "./agent.js";
+
+type DiskFreeTool = ToolDefinition<{ path: string }, { path: string; freeBytes: number }>;
+
+/** A `disk_free` that reports a fixed number instead of reading the real filesystem —
+ *  used by determinism tests so the whole pipeline is reproducible (the real disk's free
+ *  bytes drift between calls). Same name/args/result/capabilities as the real tool. */
+function fixedDiskFreeTool(freeBytes: number): DiskFreeTool {
+  return { ...diskFreeTool, handler: async (args) => ({ path: args.path, freeBytes }) };
+}
 
 /**
  * The vertical slice's agent (spec §3): one agent (`probe-agent`), one tool
  * (`disk_free`), one skill (`host-facts`, grounding `cited`). The grounding mode is
  * a parameter so the SAME agent powers both the headline test (cited) and the
  * negative control (off) — proving Eleven is what makes the difference.
+ *
+ * `diskFree`, when set, swaps the real `disk_free` for one that reports that fixed
+ * number — so a determinism test gets a fully reproducible run without a live disk read.
  */
 export function buildProbeAgent(opts: {
   adapter: ModelAdapter;
   grounding: GroundingMode;
+  diskFree?: number;
 }): Promise<Agent> {
+  const tool: DiskFreeTool =
+    opts.diskFree === undefined ? diskFreeTool : fixedDiskFreeTool(opts.diskFree);
   const registry = new ToolRegistry();
-  registry.register(diskFreeTool);
+  registry.register(tool);
   return Agent.start({
     agentId: "probe-agent",
     adapter: opts.adapter,
     registry,
     grant: { agentId: "probe-agent", capabilities: [{ name: "host:info" }] },
-    tools: [diskFreeTool],
+    tools: [tool],
     grounding: { mode: opts.grounding, qualifyingTools: ["disk_free"] },
     systemPrompt: "You are probe-agent. Answer questions about this host accurately.",
   });
