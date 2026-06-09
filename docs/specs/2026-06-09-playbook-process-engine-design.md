@@ -49,14 +49,14 @@ Research ──▶ Plan ──▶ Tasks ──▶ Execute ──▶ Validate ─
 Each phase defines an `accepted(state) → boolean | correction`, exactly like Eleven's
 accept-or-reprompt. Initial sketch (to be refined):
 
-| Phase    | Accepted when…                                                               |
-| -------- | ---------------------------------------------------------------------------- |
-| Research | the relevant context/spikes are recorded (a research note artifact exists).  |
-| Plan     | a design/implementation plan artifact exists and is approved.                |
-| Tasks    | the plan is decomposed into discrete, tracked tasks.                         |
-| Execute  | every task reports complete (and committed).                                 |
+| Phase    | Accepted when…                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------- |
+| Research | the relevant context/spikes are recorded (a research note artifact exists).                               |
+| Plan     | a design/implementation plan artifact exists and is approved.                                             |
+| Tasks    | the plan is decomposed into discrete, tracked tasks.                                                      |
+| Execute  | every task reports complete (and committed).                                                              |
 | Validate | the gate is green — build · lint · format:check · coverage (≥99%) · test · test:functional · docker-gate. |
-| Present  | a PR/summary is produced; control returns to the human.                      |
+| Present  | a PR/summary is produced; control returns to the human.                                                   |
 
 The runtime owns each predicate; the model cannot self-certify a phase complete.
 
