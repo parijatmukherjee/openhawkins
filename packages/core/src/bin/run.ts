@@ -27,6 +27,15 @@ function buildAdapter(kind: string, path: string): ModelAdapter {
   throw new Error(`unknown --model "${kind}" (this demo CLI supports: scripted)`);
 }
 
+const GROUNDING_MODES: GroundingMode[] = ["off", "preferred", "required", "cited"];
+
+function parseGrounding(value: string): GroundingMode {
+  if ((GROUNDING_MODES as string[]).includes(value)) {
+    return value as GroundingMode;
+  }
+  throw new Error(`unknown --grounding "${value}" (use: ${GROUNDING_MODES.join(" | ")})`);
+}
+
 function readStdinLine(): Promise<string> {
   return new Promise((resolve) => {
     const rl = createInterface({ input: process.stdin });
@@ -40,7 +49,7 @@ function readStdinLine(): Promise<string> {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const modelKind = flag(args, "--model", "scripted");
-  const grounding = flag(args, "--grounding", "cited") as GroundingMode;
+  const grounding = parseGrounding(flag(args, "--grounding", "cited"));
   const path = flag(args, "--path", tmpdir());
   const approveAll = args.includes("--approve-all");
   const asJson = args.includes("--json");

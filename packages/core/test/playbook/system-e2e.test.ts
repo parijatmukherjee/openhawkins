@@ -37,8 +37,12 @@ function multiTurnWeakModel(path: string, turns: number): ModelAdapter {
         }
         try {
           return await current.generate(req);
-        } catch {
-          // The current delegate finished its 3-step turn; advance to the next turn.
+        } catch (err) {
+          // Only an exhausted delegate (it finished its 3-step turn) means "advance to the
+          // next turn"; any other error is a real failure and must surface, not be masked.
+          if (!(err instanceof Error && /exhausted/.test(err.message))) {
+            throw err;
+          }
           i += 1;
         }
       }
