@@ -64,6 +64,37 @@ describe("ConverterRegistry", () => {
     expect(res.warnings[0]).toMatch(/boom.*failed.*kaboom/);
   });
 
+  it("never throws when a registered converter's accepts() throws", async () => {
+    const hostile: Converter = {
+      format: "hostile",
+      accepts: () => {
+        throw new Error("accepts blew up");
+      },
+      convert: async () => ({ markdown: "unreachable" }),
+    };
+    const reg = new ConverterRegistry(textConverter).register(hostile);
+    const res = await reg.convert({ data: "safe words", mime: "text/plain" });
+    expect(res.format).toBe("text");
+    expect(res.markdown).toBe("safe words");
+    expect(res.warnings[0]).toMatch(/accepts blew up/);
+  });
+
+  it("degrades to a raw text decode when the fallback converter itself throws", async () => {
+    const brokenFallback: Converter = {
+      format: "broken",
+      accepts: () => false,
+      convert: async () => {
+        throw new Error("fallback down");
+      },
+    };
+    const reg = new ConverterRegistry(brokenFallback).register(boom);
+    const res = await reg.convert({ data: "raw text", filename: "x.boom" });
+    expect(res.format).toBe("text");
+    expect(res.markdown).toBe("raw text");
+    expect(res.warnings[0]).toMatch(/boom.*failed.*kaboom/);
+    expect(res.warnings[1]).toMatch(/fallback converter failed.*fallback down/);
+  });
+
   it("stringifies a non-Error value thrown by a converter", async () => {
     const reg = new ConverterRegistry(textConverter).register({
       format: "weird",

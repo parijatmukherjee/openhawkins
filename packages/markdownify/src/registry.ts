@@ -2,6 +2,11 @@ import type { Converter, ConvertInput, MarkdownResult } from "./types.js";
 import { extOf, sniff } from "./detect.js";
 import { asString } from "./converters/text.js";
 
+/** Render any thrown value as a short message for a warning. */
+function describe(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * Picks a converter by mime → extension → content sniff (falling back to the
  * supplied fallback converter) and runs it. `convert` NEVER throws: a converter that
@@ -39,10 +44,17 @@ export class ConverterRegistry {
     return this.fallback;
   }
 
+  /**
+   * Convert `input` to Markdown. Guaranteed not to throw: picking a converter, the
+   * chosen converter, and even the fallback are all guarded, with a last-resort raw
+   * text decode that cannot fail — so a bad document (or a misbehaving injected
+   * converter) can never fail an agent turn.
+   */
   async convert(input: ConvertInput): Promise<MarkdownResult> {
-    const converter = this.pick(input);
     const warnings: string[] = [];
+    let converter = this.fallback;
     try {
+      converter = this.pick(input);
       const out = await converter.convert(input.data);
       return {
         markdown: out.markdown,
@@ -51,11 +63,14 @@ export class ConverterRegistry {
         ...(out.title !== undefined ? { title: out.title } : {}),
       };
     } catch (err) {
-      warnings.push(
-        `converter "${converter.format}" failed: ${err instanceof Error ? err.message : String(err)}; treated as text`,
-      );
-      const fb = await this.fallback.convert(input.data);
-      return { markdown: fb.markdown, format: this.fallback.format, warnings };
+      warnings.push(`converter "${converter.format}" failed: ${describe(err)}; treated as text`);
+      try {
+        const fb = await this.fallback.convert(input.data);
+        return { markdown: fb.markdown, format: this.fallback.format, warnings };
+      } catch (fbErr) {
+        warnings.push(`fallback converter failed: ${describe(fbErr)}; using raw text`);
+        return { markdown: asString(input.data), format: "text", warnings };
+      }
     }
   }
 }
