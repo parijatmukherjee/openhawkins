@@ -1,9 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { ScriptedOperator, HumanOperator } from "../../src/playbook/operators.js";
+import type { Operator } from "../../src/playbook/agent-run.js";
 
 describe("ScriptedOperator", () => {
   it("returns its decisions in order, then declines once exhausted", async () => {
-    const op = new ScriptedOperator([
+    // typed as the Operator interface: ScriptedOperator.review() drops its (unused) arg,
+    // so calling it via the interface (arity 1) is how every consumer actually invokes it.
+    const op: Operator = new ScriptedOperator([
       { approve: true, actor: "alice", reason: "spikes done" },
       { approve: false },
     ]);
