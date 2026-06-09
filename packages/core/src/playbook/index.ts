@@ -4,3 +4,6 @@ export * from "./machine.js";
 export * from "./gates.js";
 export * from "./gate-command.js";
 export * from "./runner.js";
+export * from "./agent-run.js";
+export * from "./operators.js";
+export * from "./build-agent-run.js";
