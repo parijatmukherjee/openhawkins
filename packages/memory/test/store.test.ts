@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { VecnaStore } from "../src/store.js";
 import { FakeEmbedder } from "../src/embedder.js";
@@ -258,5 +261,18 @@ describe("VecnaStore vector recall", () => {
     expect(hits).toHaveLength(1);
     expect(hits[0].text).toBe("free disk space");
     s.close();
+  });
+
+  it("skips embeddings of a different dimension when the store is reopened with another embedder", async () => {
+    const path = join(mkdtempSync(join(tmpdir(), "oh-vec-dim-")), "m.sqlite");
+    const a = VecnaStore.open(path, { embedder: new FakeEmbedder(4) });
+    await a.remember({ text: "free disk space" }, 1); // stores a 4-float (16-byte) embedding
+    a.close();
+
+    // Reopen with an 8-dim embedder: the stored 16-byte row != 8*4 bytes -> skipped,
+    // and recall returns [] gracefully instead of throwing a cosine length mismatch.
+    const b = VecnaStore.open(path, { embedder: new FakeEmbedder(8) });
+    expect(await b.recall({ text: "free disk space", now: 2 })).toEqual([]);
+    b.close();
   });
 });

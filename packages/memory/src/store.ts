@@ -125,6 +125,9 @@ export class VecnaStore {
     const k = query.k ?? 5;
 
     if (this.embedder) {
+      // Load rows BEFORE embedding the query: embedding is the expensive op
+      // (a neural-net forward pass for a real embedder), so a cold/empty store
+      // must not pay for it. Do NOT reorder to embed-first.
       const rows = this.loadEmbeddedStmt.all() as (FragmentRow & { embedding: Uint8Array })[];
       if (rows.length === 0) {
         return [];
@@ -133,7 +136,13 @@ export class VecnaStore {
       if (isZeroVector(qvec)) {
         return [];
       }
+      // Invariant: a store is used with a single embedder for its lifetime. If a
+      // persisted store is reopened with a different-dimension embedder, rows whose
+      // stored vector has the wrong byte length are skipped rather than crashing
+      // cosineSimilarity. (Switching embedders requires re-embedding the fragments.)
+      const expectedBytes = this.embedder.dims * 4;
       const candidates: Candidate[] = rows
+        .filter((r) => r.embedding.byteLength === expectedBytes)
         .map((r) => ({
           fragment: rowToFragment(r),
           // clamp cosine to [0,1] so the text term shares scale with the lexical path
