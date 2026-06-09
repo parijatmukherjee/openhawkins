@@ -14,56 +14,58 @@ const at = (phase: PlaybookRunState["phase"], replans = 0): PlaybookRunState => 
 describe("playbook machine — step", () => {
   it("a passed gate advances to the sequential next phase", () => {
     expect(step(DEFAULT_MANIFEST, at("Research"), passed)).toEqual({
-      next: { phase: "Plan", replans: 0 },
+      phase: "Plan",
       outcome: "advanced",
     });
     expect(step(DEFAULT_MANIFEST, at("Execute"), passed)).toEqual({
-      next: { phase: "Validate", replans: 0 },
+      phase: "Validate",
       outcome: "advanced",
     });
   });
 
   it("a passed Validate advances to the terminal Present phase", () => {
     expect(step(DEFAULT_MANIFEST, at("Validate"), passed)).toEqual({
-      next: { phase: "Present", replans: 0 },
+      phase: "Present",
       outcome: "advanced",
     });
   });
 
-  it("a failed Validate routes to onFail (Plan) and increments replans", () => {
+  it("a failed Validate routes to onFail (Plan); the fold owns the count", () => {
     expect(step(DEFAULT_MANIFEST, at("Validate", 0), failed)).toEqual({
-      next: { phase: "Plan", replans: 1 },
+      phase: "Plan",
       outcome: "replan",
     });
   });
 
   it("the last replan within budget still routes to onFail (not escalation)", () => {
-    // maxReplans is 3; the 3rd failure (replans 2 -> 3) is the last allowed replan.
-    // Brackets the budget boundary from below so a `>`->`>=` regression is caught.
+    // maxReplans is 3; at replans 2 the budget is not yet spent (2 >= 3 is false), so this
+    // is still a replan. Brackets the budget boundary from below so a `>=`->`>` regression
+    // (which would escalate one failure too late) is caught.
     expect(step(DEFAULT_MANIFEST, at("Validate", 2), failed)).toEqual({
-      next: { phase: "Plan", replans: 3 },
+      phase: "Plan",
       outcome: "replan",
     });
   });
 
   it("exceeding maxReplans escalates instead of looping", () => {
-    // maxReplans is 3; the 4th failure (replans 3 -> 4) escalates.
+    // maxReplans is 3; at replans 3 the budget is spent (3 >= 3), so the next failure
+    // escalates and stays on Validate.
     expect(step(DEFAULT_MANIFEST, at("Validate", 3), failed)).toEqual({
-      next: { phase: "Validate", replans: 4 },
+      phase: "Validate",
       outcome: "escalated",
     });
   });
 
   it("a needs-operator verdict pauses without moving", () => {
     expect(step(DEFAULT_MANIFEST, at("Research"), needsOp)).toEqual({
-      next: { phase: "Research", replans: 0 },
+      phase: "Research",
       outcome: "paused",
     });
   });
 
   it("any verdict at the terminal phase is a no-op", () => {
     expect(step(DEFAULT_MANIFEST, at("Present"), passed)).toEqual({
-      next: { phase: "Present", replans: 0 },
+      phase: "Present",
       outcome: "noop",
     });
   });
@@ -77,7 +79,7 @@ describe("playbook machine — step", () => {
       maxReplans: 3,
     };
     expect(step(m, at("Validate", 0), failed)).toEqual({
-      next: { phase: "Validate", replans: 1 },
+      phase: "Validate",
       outcome: "replan",
     });
   });

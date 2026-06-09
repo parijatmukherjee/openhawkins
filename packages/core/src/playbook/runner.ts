@@ -92,13 +92,13 @@ export class PlaybookRun {
     switch (transition.outcome) {
       case "advanced":
         await this.commit(this.gatePassed(phase));
-        await this.enter(transition.next.phase);
-        this._status = this.statusForPhase(transition.next.phase);
+        await this.enter(transition.phase);
+        this._status = this.statusForPhase(transition.phase);
         break;
       case "replan":
         await this.commit(this.gateFailed(phase, reason, false));
-        await this.enter(transition.next.phase);
-        this._status = { kind: "running", phase: transition.next.phase };
+        await this.enter(transition.phase);
+        this._status = { kind: "running", phase: transition.phase };
         break;
       case "escalated":
         await this.commit(this.gateFailed(phase, reason, true));
@@ -141,8 +141,8 @@ export class PlaybookRun {
       at: this.clock(),
     });
     const transition = step(this.deps.manifest, this._state, { status: "passed" });
-    await this.enter(transition.next.phase);
-    this._status = this.statusForPhase(transition.next.phase);
+    await this.enter(transition.phase);
+    this._status = this.statusForPhase(transition.phase);
     return this._status;
   }
 
