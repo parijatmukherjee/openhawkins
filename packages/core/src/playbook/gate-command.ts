@@ -1,8 +1,17 @@
 import { spawn } from "node:child_process";
 import type { GateCheck, ValidatePredicate } from "./gates.js";
 
-/** A command to run: the executable and its argument list (no shell — args are literal). */
+/** A command to run: the executable and its argument list (args are passed literally;
+ *  a shell is used only for Windows `.cmd`/`.bat` shims — see `needsShell`). */
 export type Command = [cmd: string, args: string[]];
+
+/** Whether spawning `cmd` needs a shell. Since the Node fix for CVE-2024-27980, spawning
+ *  a Windows batch shim (`.cmd`/`.bat`, e.g. `npm.cmd`) WITHOUT a shell throws `EINVAL`;
+ *  on every other platform/target a shell is avoided so args stay literal. Pure (takes
+ *  `platform`) so both arms are testable on any host. */
+export function needsShell(cmd: string, platform: NodeJS.Platform = process.platform): boolean {
+  return platform === "win32" && /\.(cmd|bat)$/i.test(cmd);
+}
 
 /**
  * Run one command to completion, capturing output. Resolves `{ ok: true }` on a zero
@@ -14,7 +23,7 @@ export function runCommand(cmd: string, args: string[]): Promise<GateCheck> {
     // Both `error` (spawn failure) and `close` can fire for one child, so `resolve` may
     // be called twice — harmless, since a settled Promise ignores later resolutions. We
     // rely on that idempotency deliberately rather than tracking a `settled` flag.
-    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], shell: needsShell(cmd) });
     let out = "";
     child.stdout?.on("data", (d: Buffer) => (out += d.toString()));
     child.stderr?.on("data", (d: Buffer) => (out += d.toString()));
@@ -40,7 +49,10 @@ export function npmExecutable(platform: NodeJS.Platform = process.platform): str
   return platform === "win32" ? "npm.cmd" : "npm";
 }
 
-/** The repo gate as a command list (run in order; the Docker gate runs the same set). */
+/** The repo gate as a command list (run in order; the Docker gate runs the same set).
+ *  Spec §3.4 also lists `test` and `docker-gate`: `coverage` (`vitest run --coverage`)
+ *  subsumes `test` (`vitest run`), and `docker-gate` is the CI wrapper around exactly
+ *  these scripts — so both are intentionally omitted here rather than run recursively. */
 export const DEFAULT_GATE_COMMANDS: Command[] = [
   [npmExecutable(), ["run", "build"]],
   [npmExecutable(), ["run", "lint"]],

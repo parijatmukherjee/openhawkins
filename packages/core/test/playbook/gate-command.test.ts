@@ -4,6 +4,7 @@ import {
   gateCommandPredicate,
   DEFAULT_GATE_COMMANDS,
   npmExecutable,
+  needsShell,
 } from "../../src/playbook/gate-command.js";
 
 // Spawn the running JS engine itself (always present on Node + Bun) so these tests are
@@ -78,5 +79,15 @@ describe("npmExecutable", () => {
     expect(npmExecutable("win32")).toBe("npm.cmd");
     expect(npmExecutable("linux")).toBe("npm");
     expect(npmExecutable("darwin")).toBe("npm");
+  });
+});
+
+describe("needsShell", () => {
+  it("requires a shell only for Windows .cmd/.bat shims", () => {
+    expect(needsShell("npm.cmd", "win32")).toBe(true);
+    expect(needsShell("foo.bat", "win32")).toBe(true);
+    expect(needsShell("npm", "win32")).toBe(false); // a real .exe / non-shim on win32
+    expect(needsShell("npm.cmd", "linux")).toBe(false); // .cmd is meaningless off Windows
+    expect(needsShell("npm", "darwin")).toBe(false);
   });
 });
