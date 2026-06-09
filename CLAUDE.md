@@ -16,7 +16,7 @@ Run every feature, refactor, or design change through this loop:
 3. **Tasks** — decompose the plan into bite-sized, independently-reviewable tasks.
 4. **Execute** — implement task-by-task, TDD (failing test first).
 5. **Validate & Test** — per task: spec-compliance review + code-quality review; then
-   the gate: `build · lint · format:check · coverage(≥99%) · test · test:functional`
+   the gate: `build · lint · format:check · coverage (≥99%) · test · test:functional`
    and the Docker gate. **If anything fails, go back to Plan.**
 6. **Present** — open a PR; summarize; the human decides merge.
 
