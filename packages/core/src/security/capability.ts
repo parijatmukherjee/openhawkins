@@ -5,7 +5,8 @@ export type CapabilityName =
   | "fs:read"
   | "fs:write"
   | "host:info"
-  | "model-call";
+  | "model-call"
+  | "playbook:override";
 
 export interface Capability {
   name: CapabilityName;
