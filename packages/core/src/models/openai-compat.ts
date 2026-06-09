@@ -5,7 +5,7 @@ import type {
   GenerateResult,
   ModelToolCall,
 } from "./adapter.js";
-import { defaultHttp, type HttpFetch } from "./http.js";
+import { defaultHttp, parseJsonOrThrow, assertSafeBaseUrl, type HttpFetch } from "./http.js";
 
 /**
  * OpenAI-compatible adapter — the `/v1/chat/completions` wire format spoken by
@@ -39,6 +39,7 @@ export class OpenAiCompatAdapter implements ModelAdapter {
   constructor(cfg: OpenAiCompatConfig) {
     this.model = cfg.model;
     this.baseUrl = cfg.baseUrl.replace(/\/$/, "");
+    assertSafeBaseUrl(this.baseUrl);
     this.apiKey = cfg.apiKey;
     this.http = cfg.http ?? defaultHttp;
   }
@@ -76,7 +77,9 @@ export class OpenAiCompatAdapter implements ModelAdapter {
     if (!res.ok) {
       throw new Error(`openai-compat request failed (${res.status}): ${text}`);
     }
-    return parseOpenAiResponse(JSON.parse(text) as OpenAiChatResponse);
+    return parseOpenAiResponse(
+      parseJsonOrThrow<OpenAiChatResponse>(text, "openai-compat", res.status),
+    );
   }
 }
 

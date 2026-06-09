@@ -5,7 +5,7 @@ import type {
   GenerateResult,
   ModelToolCall,
 } from "./adapter.js";
-import { defaultHttp, type HttpFetch } from "./http.js";
+import { defaultHttp, parseJsonOrThrow, assertSafeBaseUrl, type HttpFetch } from "./http.js";
 
 /**
  * Ollama adapter — one code path for both **local** (default
@@ -40,6 +40,7 @@ export class OllamaAdapter implements ModelAdapter {
   constructor(cfg: OllamaConfig) {
     this.model = cfg.model;
     this.baseUrl = (cfg.baseUrl ?? "http://127.0.0.1:11434").replace(/\/$/, "");
+    assertSafeBaseUrl(this.baseUrl);
     this.apiKey = cfg.apiKey;
     this.http = cfg.http ?? defaultHttp;
   }
@@ -74,7 +75,7 @@ export class OllamaAdapter implements ModelAdapter {
     if (!res.ok) {
       throw new Error(`ollama request failed (${res.status}): ${text}`);
     }
-    return parseOllamaResponse(JSON.parse(text) as OllamaChatResponse);
+    return parseOllamaResponse(parseJsonOrThrow<OllamaChatResponse>(text, "ollama", res.status));
   }
 }
 
