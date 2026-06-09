@@ -95,8 +95,8 @@ Research ──▶ Plan ──▶ Tasks ──▶ Execute ──▶ Validate ─
 - **Terminal:** `Present`. The run ends with a presented artifact (a PR/summary) and a
   human decision point.
 
-`PlaybookMachine.next(phase, verdict)` is pure and exhaustively testable; the runner
-performs the IO around it.
+The pure transition function `step(manifest, state, verdict)` (in `machine.ts`) is
+exhaustively testable; the runner performs the IO around it.
 
 ### 3.3 State model — PhaseTransition events (VINES)
 
@@ -113,8 +113,11 @@ existing union in `session/events.ts`:
 ```
 
 `reduceEvent` is extended so `SessionState` carries the current `PlaybookRunState`
-(current phase, replan count, `paused` flag). The reducer stays a pure fold; the
-existing turn-state handling is untouched.
+(current phase + replan count). The reducer stays a pure fold; the existing turn-state
+handling is untouched. (Whether a run is _paused_ awaiting an operator is derivable from
+the log — being in a soft phase with no following `PhaseOverridden`, or a `Validate`
+`PhaseGateFailed{escalate:true}` — so it is not stored as a field; the P3 runner adds
+that derivation rather than a persisted flag.)
 
 ### 3.4 Gates (the Eleven-style accept policy)
 
@@ -246,7 +249,7 @@ The current phase after every step equals `fold(events)`.
 ## 8. Milestones (for the implementation plan)
 
 - **P1 — Machine + events (pure core).** `Phase`/`PlaybookManifest`/default manifest;
-  the `PhaseEvent` variants + reducer extension; `PlaybookMachine.next`. Fully unit-
+  the `PhaseEvent` variants + reducer extension; the pure `step` machine. Fully unit-
   tested, no IO.
 - **P2 — Gates.** `PhaseGate` interface; `SoftGate`; `ValidateGate` over an injected
   predicate + the real repo-gate-command predicate.

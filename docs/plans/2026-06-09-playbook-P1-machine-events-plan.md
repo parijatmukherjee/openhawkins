@@ -6,7 +6,7 @@
 
 **Architecture:** A new `packages/core/src/playbook/` module. `manifest.ts` declares the phases and the default Playbook (the CLAUDE.md spine). `events.ts` defines four `PhaseEvent` `DomainEvent` variants and the pure reducer that folds them into a `PlaybookRunState`. The session's existing `DomainEvent` union and `reduceEvent` fold are extended to carry that state (via a type-guard delegation, so the existing four cases stay exhaustive). `machine.ts` is a pure `step(manifest, state, verdict) → transition` function with no IO. Everything is unit-tested to 100%.
 
-**Tech Stack:** TypeScript (strict: `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `noUncheckedIndexedAccess`), ESM with `.js` import specifiers, Vitest, Node 24 + Bun 1.3. Prettier printWidth 100, double quotes.
+**Tech Stack:** TypeScript (strict: `exactOptionalPropertyTypes`, `verbatimModuleSyntax`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables`), ESM with `.js` import specifiers, Vitest, Node 24 + Bun 1.3. Prettier printWidth 100, double quotes. (Note: `noUncheckedIndexedAccess` is **not** enabled repo-wide; still, write index access defensively — capture-and-guard `arr[i]` — so the code is correct under either setting and ready if it is enabled later.)
 
 **Spec:** [`docs/specs/2026-06-09-playbook-process-engine-design.md`](../specs/2026-06-09-playbook-process-engine-design.md) — this plan implements milestone **P1** (§8).
 
