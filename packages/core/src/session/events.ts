@@ -1,8 +1,11 @@
+import type { PhaseEvent } from "../playbook/events.js";
+
 export type DomainEvent =
   | { type: "SessionStarted"; sessionId: string; agentId: string; at: number }
   | { type: "TurnStarted"; sessionId: string; turnId: string; input: string; at: number }
   | { type: "TurnEnded"; sessionId: string; turnId: string; final: string; at: number }
-  | { type: "TurnFailed"; sessionId: string; turnId: string; error: string; at: number };
+  | { type: "TurnFailed"; sessionId: string; turnId: string; error: string; at: number }
+  | PhaseEvent;
 
 export interface EventStore {
   append(event: DomainEvent): Promise<void>;

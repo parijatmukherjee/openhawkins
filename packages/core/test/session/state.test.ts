@@ -36,3 +36,38 @@ describe("session state fold", () => {
     expect(s.turns[0]).toEqual({ id: "t-1", input: "hi", error: "boom" });
   });
 });
+
+describe("session state — playbook phase events", () => {
+  const base = { sessionId: "s1", runId: "r1", at: 1 } as const;
+
+  it("folds phase events into SessionState.playbook", () => {
+    const events: DomainEvent[] = [
+      { type: "SessionStarted", sessionId: "s1", agentId: "a1", at: 0 },
+      { type: "PhaseEntered", ...base, phase: "Research" },
+      { type: "PhaseEntered", ...base, phase: "Plan" },
+    ];
+    expect(foldEvents(events).playbook).toEqual({ phase: "Plan", replans: 0 });
+  });
+
+  it("counts a Validate failure in SessionState.playbook.replans", () => {
+    const events: DomainEvent[] = [
+      { type: "PhaseEntered", ...base, phase: "Validate" },
+      {
+        type: "PhaseGateFailed",
+        ...base,
+        phase: "Validate",
+        reason: "red",
+        escalate: false,
+      },
+      { type: "PhaseEntered", ...base, phase: "Plan" },
+    ];
+    expect(foldEvents(events).playbook).toEqual({ phase: "Plan", replans: 1 });
+  });
+
+  it("leaves playbook undefined when no phase events have occurred", () => {
+    const events: DomainEvent[] = [
+      { type: "SessionStarted", sessionId: "s1", agentId: "a1", at: 0 },
+    ];
+    expect(foldEvents(events).playbook).toBeUndefined();
+  });
+});

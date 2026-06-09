@@ -26,3 +26,4 @@ export * from "./grounding/eleven.js";
 export * from "./eval/agent.js";
 export * from "./eval/harness.js";
 export * from "./eval/scenarios.js";
+export * from "./playbook/index.js";
