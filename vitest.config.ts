@@ -24,6 +24,7 @@ export default defineConfig({
         "packages/*/src/models/adapter.ts",
         "packages/*/src/tools/tool.ts",
         "packages/*/src/fragment.ts",
+        "packages/*/src/types.ts",
       ],
       reporter: ["text", "html", "lcov", "json-summary"],
       // The merge gate: coverage MUST stay above these floors (enforced locally,
