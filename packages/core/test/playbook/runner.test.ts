@@ -15,7 +15,6 @@ const OPERATOR: AgentGrant = {
 
 /** A gate that always returns the same verdict — stands in for SoftGate/ValidateGate.
  *  Used by the advance/override describe blocks appended in later tasks. */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function fakeGate(verdict: Awaited<ReturnType<PhaseGate["evaluate"]>>): PhaseGate {
   return { evaluate: async () => verdict };
 }
@@ -56,5 +55,77 @@ describe("PlaybookRun.start", () => {
     await expect(
       PlaybookRun.start(deps({ manifest: { phases: [], maxReplans: 3 } })),
     ).rejects.toThrow(/no phases/);
+  });
+});
+
+const phasesOf = async (store: InMemoryEventStore): Promise<string[]> =>
+  (await store.read("s1")).filter(isPhaseEvent).map((e) => `${e.type}:${e.phase}`);
+
+describe("PlaybookRun.advance", () => {
+  it("a passed gate advances and records GatePassed + Entered", async () => {
+    const d = deps({ softGate: fakeGate({ status: "passed" }) });
+    const run = await PlaybookRun.start(d);
+    const status = await run.advance();
+    expect(status).toEqual({ kind: "running", phase: "Plan" });
+    expect(await phasesOf(d.store as InMemoryEventStore)).toEqual([
+      "PhaseEntered:Research",
+      "PhaseGatePassed:Research",
+      "PhaseEntered:Plan",
+    ]);
+    expect(await d.audit.verify()).toBe(true);
+  });
+
+  it("a soft gate pauses the run awaiting an operator (no new events)", async () => {
+    const d = deps(); // real SoftGate -> needs-operator
+    const run = await PlaybookRun.start(d);
+    const status = await run.advance();
+    expect(status.kind).toBe("awaiting-operator");
+    expect(await phasesOf(d.store as InMemoryEventStore)).toEqual(["PhaseEntered:Research"]);
+  });
+
+  it("a failed Validate replans to Plan, recording GateFailed(escalate:false) + Entered", async () => {
+    const d = deps({ validateGate: fakeGate({ status: "failed", reason: "coverage 98%" }) });
+    const run = await PlaybookRun.start(d);
+    await run.override("op", "skip research"); // Research -> Plan
+    await run.override("op", "skip plan"); // Plan -> Tasks
+    await run.override("op", "skip tasks"); // Tasks -> Execute
+    await run.override("op", "skip execute"); // Execute -> Validate
+    expect(run.state.phase).toBe("Validate");
+    const status = await run.advance(); // Validate fails
+    expect(status).toEqual({ kind: "running", phase: "Plan" });
+    expect(run.state).toEqual({ phase: "Plan", replans: 1 });
+    const events = await phasesOf(d.store as InMemoryEventStore);
+    expect(events).toContain("PhaseGateFailed:Validate");
+    expect(events[events.length - 1]).toBe("PhaseEntered:Plan");
+    expect(await d.audit.verify()).toBe(true);
+  });
+
+  it("escalates when the replan budget is exhausted", async () => {
+    const d = deps({
+      manifest: { ...DEFAULT_MANIFEST, maxReplans: 0 },
+      validateGate: fakeGate({ status: "failed", reason: "still red" }),
+    });
+    const run = await PlaybookRun.start(d);
+    await run.override("op", "to plan"); // Research -> Plan
+    await run.override("op", "to tasks"); // Plan -> Tasks
+    await run.override("op", "to execute"); // Tasks -> Execute
+    await run.override("op", "to validate"); // Execute -> Validate
+    const status = await run.advance(); // fails; replans (0+1) > maxReplans (0) -> escalate
+    expect(status).toEqual({ kind: "escalated", phase: "Validate", reason: "still red" });
+    const events = await phasesOf(d.store as InMemoryEventStore);
+    expect(events[events.length - 1]).toBe("PhaseGateFailed:Validate");
+    expect(await d.audit.verify()).toBe(true);
+  });
+
+  it("advancing at the terminal phase is a no-op returning done", async () => {
+    const d = deps({ validateGate: fakeGate({ status: "passed" }) });
+    const run = await PlaybookRun.start(d);
+    for (let i = 0; i < 4; i++) await run.override("op", "skip"); // -> Validate
+    await run.advance(); // Validate passed -> Present (done)
+    expect(run.status()).toEqual({ kind: "done", phase: "Present" });
+    const before = (await (d.store as InMemoryEventStore).read("s1")).length;
+    expect(await run.advance()).toEqual({ kind: "done", phase: "Present" });
+    const after = (await (d.store as InMemoryEventStore).read("s1")).length;
+    expect(after).toBe(before); // no new events at terminal
   });
 });
