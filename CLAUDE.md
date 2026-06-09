@@ -32,8 +32,8 @@ hard-enforced by CI.
 ## Hard rules (the gate)
 
 - `main` is protected: land via a PR whose **required `docker-gate`** passes
-  (build + lint + format + **coverage >99%** + unit + functional).
-- The coverage gate is **>99%** across statements/lines/functions/branches (see
+  (build + lint + format + **coverage ≥99%** + unit + functional).
+- The coverage gate is **≥99%** across statements/lines/functions/branches (see
   `vitest.config.ts`); do not lower it. Earn coverage with real tests, not by gaming.
 - Conventional commits; one logical change per commit. Spikes are throwaway — don't
   commit them.
