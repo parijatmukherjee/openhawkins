@@ -18,6 +18,12 @@ describe("runCommand", () => {
     expect(await runCommand(cmd, args)).toEqual({ ok: true });
   });
 
+  it("kills a hung process after timeoutMs and reports failure", async () => {
+    const result = await runCommand(SELF, ["-e", "setInterval(() => {}, 1000);"], { timeoutMs: 100 });
+    expect(result.ok).toBe(false);
+    expect(result.detail).toContain("timed out");
+  });
+
   it("reports not ok with detail for a non-zero exit code", async () => {
     const [cmd, args] = exit(3);
     const result = await runCommand(cmd, args);

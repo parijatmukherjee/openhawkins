@@ -13,24 +13,37 @@ export function needsShell(cmd: string, platform: NodeJS.Platform = process.plat
   return platform === "win32" && /\.(cmd|bat)$/i.test(cmd);
 }
 
+export interface RunCommandOptions {
+  timeoutMs?: number | undefined;
+}
+
 /**
  * Run one command to completion, capturing output. Resolves `{ ok: true }` on a zero
  * exit, or `{ ok: false, detail }` on a non-zero exit or a spawn error (e.g. the binary
  * is missing). Never rejects — failures are returned as data, not thrown.
  */
-export function runCommand(cmd: string, args: string[]): Promise<GateCheck> {
+export function runCommand(cmd: string, args: string[], options: RunCommandOptions = {}): Promise<GateCheck> {
   return new Promise((resolve) => {
     // Both `error` (spawn failure) and `close` can fire for one child, so `resolve` may
     // be called twice — harmless, since a settled Promise ignores later resolutions. We
     // rely on that idempotency deliberately rather than tracking a `settled` flag.
     const child = spawn(cmd, args, { stdio: ["ignore", "pipe", "pipe"], shell: needsShell(cmd) });
     let out = "";
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (options.timeoutMs !== undefined && options.timeoutMs > 0) {
+      timeoutId = setTimeout(() => {
+        child.kill("SIGKILL");
+        resolve({ ok: false, detail: `${cmd} timed out after ${options.timeoutMs}ms` });
+      }, options.timeoutMs);
+    }
     child.stdout?.on("data", (d: Buffer) => (out += d.toString()));
     child.stderr?.on("data", (d: Buffer) => (out += d.toString()));
     child.on("error", (err) => {
+      clearTimeout(timeoutId);
       resolve({ ok: false, detail: `failed to run ${cmd}: ${err.message}` });
     });
     child.on("close", (code) => {
+      clearTimeout(timeoutId);
       if (code === 0) {
         resolve({ ok: true });
       } else {
@@ -66,10 +79,10 @@ export const DEFAULT_GATE_COMMANDS: Command[] = [
  * non-zero exit (short-circuit), surfacing that command's detail. Pass
  * `DEFAULT_GATE_COMMANDS` for the real repo gate.
  */
-export function gateCommandPredicate(commands: Command[]): ValidatePredicate {
+export function gateCommandPredicate(commands: Command[], timeoutMs?: number): ValidatePredicate {
   return async () => {
     for (const [cmd, args] of commands) {
-      const result = await runCommand(cmd, args);
+      const result = await runCommand(cmd, args, { timeoutMs });
       if (!result.ok) {
         return result;
       }
