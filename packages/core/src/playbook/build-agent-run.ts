@@ -2,6 +2,7 @@ import { Agent } from "../eval/agent.js";
 import type { ModelAdapter } from "../models/adapter.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { diskFreeTool } from "../tools/disk-free.js";
+import { createDocumentTool, type DocumentConverter } from "../tools/document-tool.js";
 import type { GroundingMode } from "../grounding/eleven.js";
 import { InMemoryEventStore, type EventStore } from "../session/events.js";
 import { RedactingEventStore } from "../session/redacting-store.js";
@@ -31,6 +32,9 @@ export interface BuildAgentRunOpts {
   /** Structured logger for swallow-point diagnostics; defaults to a no-op (silent). The
    *  CLIs inject a JsonLogger to turn observability on. */
   logger?: Logger;
+  /** Optional document converter for token reduction (e.g. `@openhawkins/markdownify`).
+   *  When provided, a `convert_document` tool is registered with the agent. */
+  documentConverter?: DocumentConverter;
 }
 
 export interface BuiltAgentRun {
@@ -64,6 +68,9 @@ export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgent
 
   const registry = new ToolRegistry(logger);
   registry.register(diskFreeTool);
+  if (opts.documentConverter) {
+    registry.register(createDocumentTool(opts.documentConverter));
+  }
   const agent = await Agent.start({
     agentId,
     adapter: opts.adapter,

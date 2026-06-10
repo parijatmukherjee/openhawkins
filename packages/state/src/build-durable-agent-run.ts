@@ -4,10 +4,20 @@ import {
   FileVault,
   type BuildAgentRunOpts,
   type BuiltAgentRun,
+  type DocumentConverter,
 } from "@openhawkins/core";
+import { markdownify } from "@openhawkins/markdownify";
 import { openDatabase, type SqlDriver } from "./driver/driver.js";
 import { SqliteEventStore } from "./event-store.js";
 import { SqliteAuditLog } from "./audit-store.js";
+
+/** Markdownify-backed document converter injected into the agent path. */
+const markdownifyConverter: DocumentConverter = {
+  convert: async (data, mime, filename) => {
+    const result = await markdownify({ data, mime, filename });
+    return { markdown: result.markdown, format: result.format };
+  },
+};
 
 /** Options for a durable agent run: the SQLite + Vault paths, plus the usual run opts
  *  (minus `store`/`audit`, which this wires). */
@@ -36,7 +46,12 @@ export async function buildDurableAgentRun(
   const key = await resolveAuditKey(new FileVault({ path: vaultPath, passphrase }));
   const store = new SqliteEventStore(db);
   const audit = new SqliteAuditLog(db, key);
-  const built = await buildAgentRun({ ...runOpts, store, audit });
+  const built = await buildAgentRun({
+    ...runOpts,
+    store,
+    audit,
+    documentConverter: markdownifyConverter,
+  });
   return { ...built, close: () => closeDriver(db) };
 }
 

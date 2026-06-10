@@ -14,6 +14,7 @@
     "build": "tsc -b"
   },
   "dependencies": {
-    "@openhawkins/core": "*"
+    "@openhawkins/core": "*",
+    "@openhawkins/markdownify": "*"
   }
 }
