@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, readFileSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, statSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir, platform } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { InMemoryVault, FileVault } from "../../src/security/vault.js";
 
 describe("InMemoryVault", () => {
@@ -52,5 +52,49 @@ describe("FileVault (encrypted at rest)", () => {
     const path = vaultPath();
     await new FileVault({ path, passphrase: "pw" }).set("k", "v");
     expect(statSync(path).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe("FileVault — durability & hardening (F-H5)", () => {
+  const vaultPath = (): string => join(mkdtempSync(join(tmpdir(), "oh-vaulth-")), "secrets.json");
+
+  it("concurrent set() calls do not drop writes (serialized mutations)", async () => {
+    const path = vaultPath();
+    const v = new FileVault({ path, passphrase: "pw" });
+    // Fired without awaiting between them: with an unserialized read-modify-write the later
+    // save() would clobber the earlier ones and only one key would survive.
+    await Promise.all([v.set("a", "1"), v.set("b", "2"), v.set("c", "3")]);
+    expect(await v.get("a")).toBe("1");
+    expect(await v.get("b")).toBe("2");
+    expect(await v.get("c")).toBe("3");
+  });
+
+  it("leaves no temp files behind after a write (atomic rename)", async () => {
+    const path = vaultPath();
+    await new FileVault({ path, passphrase: "pw" }).set("k", "v");
+    const entries = readdirSync(dirname(path));
+    expect(entries).toEqual(["secrets.json"]); // only the final file, no *.tmp-* sibling
+  });
+
+  it("records the scrypt parameters used and honors a custom cost", async () => {
+    const path = vaultPath();
+    // A deliberately low cost so the test is fast; the value is round-tripped and recorded.
+    const v = new FileVault({ path, passphrase: "pw", scryptCost: { N: 1024, r: 8, p: 1 } });
+    await v.set("k", "v");
+    const onDisk = JSON.parse(readFileSync(path, "utf8")) as { scrypt?: { N: number } };
+    expect(onDisk.scrypt).toEqual({ N: 1024, r: 8, p: 1 });
+    expect(await new FileVault({ path, passphrase: "pw" }).get("k")).toBe("v");
+  });
+
+  it("decrypts a legacy file that has no recorded scrypt params", async () => {
+    const path = vaultPath();
+    // Write with the legacy default cost (N=16384), then strip the recorded params to
+    // simulate a file written by the old code, and confirm a default vault still reads it.
+    const legacy = new FileVault({ path, passphrase: "pw", scryptCost: { N: 16384, r: 8, p: 1 } });
+    await legacy.set("k", "legacy-value");
+    const file = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    delete file.scrypt;
+    writeFileSync(path, JSON.stringify(file), "utf8");
+    expect(await new FileVault({ path, passphrase: "pw" }).get("k")).toBe("legacy-value");
   });
 });
