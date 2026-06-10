@@ -98,6 +98,9 @@ export class OllamaAdapter implements ModelAdapter {
     );
     const text = await res.text();
     if (!res.ok) {
+      // Non-JSON 5xx HTML pages should be turned into a diagnosable error
+      // instead of surfacing as a generic status error.
+      parseJsonOrThrow(text, "ollama", res.status);
       throw new Error(`ollama request failed (${res.status}): ${text}`);
     }
     return parseOllamaResponse(parseJsonOrThrow<OllamaChatResponse>(text, "ollama", res.status));

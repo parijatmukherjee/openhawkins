@@ -129,4 +129,21 @@ describe("OpenAiCompatAdapter", () => {
     const res = await adapter.generate({ messages: [{ role: "user", content: "q" }] });
     expect(res.content).toBe("ok");
   });
+
+  it("throws a rate-limit error that exposes retry-after when present on 429", async () => {
+    const http: HttpFetch = async () => ({
+      ok: false,
+      status: 429,
+      headers: new Headers({ "retry-after": "42" }),
+      text: async () => '{"error":"rate limit"}',
+    });
+    const adapter = new OpenAiCompatAdapter({
+      model: "gpt-x",
+      baseUrl: "https://api.example/v1",
+      http,
+    });
+    await expect(adapter.generate({ messages: [] })).rejects.toThrow(
+      /openai-compat request failed \(429\).*retry-after: 42/,
+    );
+  });
 });

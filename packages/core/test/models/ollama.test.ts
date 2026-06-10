@@ -100,4 +100,17 @@ describe("OllamaAdapter", () => {
     const res = await adapter.generate({ messages: [{ role: "user", content: "hi" }] });
     expect(res.content).toBe("ok");
   });
+
+  it("throws a diagnosable error for a 502 HTML response", async () => {
+    const html = "<html><body>502 Bad Gateway</body></html>";
+    const http: HttpFetch = async () => ({
+      ok: false,
+      status: 502,
+      text: async () => html,
+    });
+    const adapter = new OllamaAdapter({ model: "llama3.1", http });
+    await expect(adapter.generate({ messages: [] })).rejects.toThrow(
+      /ollama returned non-JSON \(502\)/,
+    );
+  });
 });

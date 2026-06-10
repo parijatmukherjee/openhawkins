@@ -100,7 +100,9 @@ export class OpenAiCompatAdapter implements ModelAdapter {
     );
     const text = await res.text();
     if (!res.ok) {
-      throw new Error(`openai-compat request failed (${res.status}): ${text}`);
+      const retryAfter = res.headers?.get("retry-after");
+      const suffix = retryAfter ? ` (retry-after: ${retryAfter})` : "";
+      throw new Error(`openai-compat request failed (${res.status})${suffix}: ${text}`);
     }
     return parseOpenAiResponse(
       parseJsonOrThrow<OpenAiChatResponse>(text, "openai-compat", res.status),

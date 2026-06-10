@@ -86,4 +86,21 @@ describe("withRetry", () => {
     ).rejects.toThrow(/down/);
     expect(n).toBe(3); // initial + 2 retries
   });
+
+  it("retries on ECONNRESET network errors", async () => {
+    let n = 0;
+    const r = await withRetry(
+      async () => {
+        if (n++ < 2) {
+          const err = new Error("read ECONNRESET") as Error & { code: string };
+          err.code = "ECONNRESET";
+          throw err;
+        }
+        return "ok";
+      },
+      { retries: 3, baseDelayMs: 0 },
+    );
+    expect(r).toBe("ok");
+    expect(n).toBe(3);
+  });
 });

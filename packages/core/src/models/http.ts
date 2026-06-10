@@ -15,6 +15,7 @@ export interface HttpRequestInit {
 export interface HttpResponse {
   ok: boolean;
   status: number;
+  headers?: Headers;
   text(): Promise<string>;
 }
 
