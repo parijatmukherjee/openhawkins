@@ -86,7 +86,9 @@ describe("Eleven — cited mode (strongest)", () => {
   it("rejects when the cited numeric value does not match the tool result (fabrication)", () => {
     const final = JSON.stringify({
       text: "999 bytes free",
-      claims: [{ statement: "999 bytes free", citesToolResultId: "oc-1", value: 999 }],
+      claims: [
+        { statement: "999 bytes free", citesToolResultId: "oc-1", value: 999, field: "freeBytes" },
+      ],
     });
     const decision = eleven.evaluate({ final, toolResults: [okDiskFree("oc-1", 12345)] });
     expect(decision.accept).toBe(false);
@@ -96,7 +98,14 @@ describe("Eleven — cited mode (strongest)", () => {
   it("accepts a correctly cited answer and returns the cleaned text as the final", () => {
     const final = JSON.stringify({
       text: "12345 bytes are free.",
-      claims: [{ statement: "12345 bytes free", citesToolResultId: "oc-1", value: 12345 }],
+      claims: [
+        {
+          statement: "12345 bytes free",
+          citesToolResultId: "oc-1",
+          value: 12345,
+          field: "freeBytes",
+        },
+      ],
     });
     const decision = eleven.evaluate({ final, toolResults: [okDiskFree("oc-1", 12345)] });
     expect(decision).toEqual({ accept: true, final: "12345 bytes are free." });

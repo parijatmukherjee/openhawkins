@@ -132,7 +132,10 @@ export function groundingInstruction(mode: GroundingMode, qualifyingTools?: stri
     case "cited":
       return (
         `You MUST call ${names} first, then answer ONLY as JSON: ` +
-        `{"text": "...", "claims": [{"statement": "...", "citesToolResultId": "<tool-result id>", "value": <number, optional>}]}. ` +
+        `{"text": "...", "claims": [{"statement": "...", ` +
+        `"citesToolResultId": "<tool-result id>", "value": <number, optional>, "field": "<dot-notation path, optional>"}]}. ` +
+        `"field" is the exact path in the tool result where the number came from ` +
+        `(e.g. "freeBytes" or "data.freeBytes"). ` +
         `Every factual claim must cite the tool-result id it came from. Do not guess; ` +
         `if you cannot ground the answer, reply ONLY with {"unknown": true, "reason": "..."}.`
       );

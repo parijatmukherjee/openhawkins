@@ -72,7 +72,12 @@ export function weakHostFactsModel(path: string): ScriptedAdapter {
           content: JSON.stringify({
             text: `${free} bytes are free on this machine.`,
             claims: [
-              { statement: `${free} bytes are free`, citesToolResultId: "oc-1", value: free },
+              {
+                statement: `${free} bytes are free`,
+                citesToolResultId: "oc-1",
+                value: free,
+                field: "freeBytes",
+              },
             ],
           }),
           toolCalls: [],
