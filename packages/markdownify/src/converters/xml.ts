@@ -2,10 +2,18 @@ import { XMLParser, XMLValidator } from "fast-xml-parser";
 import type { Converter } from "../types.js";
 import { asString } from "./text.js";
 
-const parser = new XMLParser({ ignoreAttributes: true, trimValues: true });
+/** Hard ceiling on XML nesting depth: `render` recurses once per level, so a pathologically
+ *  deep document (within the size budget) could overflow the stack (review F-M2). */
+const MAX_DEPTH = 256;
+
+const parser = new XMLParser({ ignoreAttributes: true, trimValues: true, maxNestedTags: 1000 });
 
 /** Render a parsed XML object as nested Markdown bullets. */
 function render(node: unknown, depth: number, lines: string[], name?: string): void {
+  if (depth > MAX_DEPTH) {
+    lines.push(`${"  ".repeat(depth)}- [truncated: max nesting depth ${MAX_DEPTH}]`);
+    return;
+  }
   const indent = "  ".repeat(depth);
   if (node === null || typeof node !== "object") {
     lines.push(`${indent}- **${name}**: ${String(node)}`);
@@ -43,8 +51,14 @@ export const xmlConverter: Converter = {
     if (XMLValidator.validate(raw) !== true) {
       return { markdown: "```\n" + raw + "\n```" };
     }
+    let parsed: unknown;
+    try {
+      parsed = parser.parse(raw);
+    } catch {
+      return { markdown: "```\n" + raw + "\n```" };
+    }
     const lines: string[] = [];
-    render(parser.parse(raw), 0, lines);
+    render(parsed, 0, lines);
     return { markdown: lines.join("\n") };
   },
 };

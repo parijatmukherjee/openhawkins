@@ -37,4 +37,13 @@ describe("csvConverter", () => {
     expect(markdown).toContain("| line<br>break | z |");
     expect(markdown).not.toContain("line\nbreak");
   });
+
+  it("handles a very large CSV without a RangeError (no argument-count spread)", async () => {
+    // 200k single-column rows: `Math.max(...rows.map(...))` spreads 200k args and throws
+    // RangeError on V8; `reduce` is unbounded. Build the input cheaply.
+    const big = Array.from({ length: 200_000 }, (_, i) => `r${i}`).join("\n");
+    const { markdown } = await csvConverter.convert(big);
+    expect(markdown.startsWith("| r0 |")).toBe(true); // header is the first row
+    expect(markdown.split("\n")).toHaveLength(200_001); // header + sep + 199_999 body rows
+  });
 });

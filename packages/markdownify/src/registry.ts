@@ -7,6 +7,10 @@ function describe(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** Default input ceiling (characters / bytes): generous for real documents, a hard DoS
+ *  bound against a pathological one. Tunable per registry. */
+const DEFAULT_MAX_INPUT_CHARS = 5_000_000;
+
 /**
  * Picks a converter by mime → extension → content sniff (falling back to the
  * supplied fallback converter) and runs it. `convert` NEVER throws: a converter that
@@ -15,7 +19,10 @@ function describe(err: unknown): string {
 export class ConverterRegistry {
   private readonly converters: Converter[] = [];
 
-  constructor(private readonly fallback: Converter) {}
+  constructor(
+    private readonly fallback: Converter,
+    private readonly maxInputChars: number = DEFAULT_MAX_INPUT_CHARS,
+  ) {}
 
   register(c: Converter): this {
     this.converters.push(c);
@@ -58,6 +65,18 @@ export class ConverterRegistry {
    * converter) can never fail an agent turn.
    */
   async convert(input: ConvertInput): Promise<MarkdownResult> {
+    // Bound input before any parser runs: `.length` is the char count for a string and the
+    // byte count for a Uint8Array, so this caps both without decoding (review F-M2).
+    if (input.data.length > this.maxInputChars) {
+      return {
+        markdown: asString(input.data).slice(0, this.maxInputChars),
+        format: "text",
+        warnings: [
+          `input of ${input.data.length} exceeds cap ${this.maxInputChars}; truncated to text`,
+        ],
+      };
+    }
+
     const warnings: string[] = [];
     let converter = this.fallback;
     let picked = false;

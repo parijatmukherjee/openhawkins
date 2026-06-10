@@ -130,4 +130,19 @@ describe("ConverterRegistry", () => {
     expect(res.format).toBe("text");
     expect(res.warnings[0]).toContain("just-a-string");
   });
+
+  it("caps oversized input: degrades to truncated text with a warning", async () => {
+    const reg = new ConverterRegistry(textConverter, 10).register(upper);
+    // lowercase input so "not uppercased" proves the `upper` converter did NOT run
+    const out = await reg.convert({ data: "abcdefghijklmnop", mime: "text/upper" });
+    expect(out.format).toBe("text"); // did NOT run the upper converter
+    expect(out.markdown).toBe("abcdefghij"); // truncated to the 10-char cap, still lowercase
+    expect(out.warnings[0]).toMatch(/exceeds cap/);
+  });
+
+  it("does not cap input at or below the ceiling", async () => {
+    const reg = new ConverterRegistry(textConverter, 10).register(upper);
+    const out = await reg.convert({ data: "abc", mime: "text/upper" });
+    expect(out).toMatchObject({ markdown: "ABC", format: "upper" }); // normal path: uppercased
+  });
 });

@@ -59,7 +59,9 @@ export const csvConverter: Converter = {
     if (first === undefined) {
       return { markdown: "" };
     }
-    const width = Math.max(...rows.map((r) => r.length));
+    // reduce (not `Math.max(...spread)`): a spread of one argument per row throws a
+    // RangeError past the engine's argument-count limit on a large CSV (review F-M2).
+    const width = rows.reduce((max, r) => Math.max(max, r.length), 0);
     const pad = (r: string[]): string[] => [...r, ...Array<string>(width - r.length).fill("")];
     const line = (r: string[]): string => `| ${pad(r).map(cell).join(" | ")} |`;
     const header = line(first);
