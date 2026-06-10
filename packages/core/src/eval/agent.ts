@@ -11,6 +11,8 @@ import type { TurnRecord } from "../loop/turn.js";
 import { Eleven, groundingInstruction, type ElevenConfig } from "../grounding/eleven.js";
 import { type AuditLog, InMemoryAuditLog } from "../security/audit.js";
 import type { MemoryStore } from "../memory.js";
+import type { MetricsCollector } from "../observability/metrics.js";
+import { noopMetricsCollector } from "../observability/metrics.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyToolDefinition = ToolDefinition<any, any>;
@@ -35,6 +37,8 @@ export interface AgentConfig {
   clock?: Clock;
   /** Optional memory store for context injection before each turn. */
   memory?: MemoryStore;
+  /** Metrics collector for turn lifecycle and latency telemetry. */
+  metrics?: MetricsCollector;
 }
 
 export class Agent {
@@ -60,7 +64,8 @@ export class Agent {
 
   /** Run one grounded turn. Serialized by the Session; audited by Murray. */
   async ask(input: string): Promise<TurnRecord> {
-    const policy = new Eleven(this.cfg.grounding);
+    const metrics = this.cfg.metrics ?? noopMetricsCollector;
+    const policy = new Eleven(this.cfg.grounding, metrics);
     const instruction = groundingInstruction(
       this.cfg.grounding.mode,
       this.cfg.grounding.qualifyingTools,
@@ -78,8 +83,19 @@ export class Agent {
 
     const traceId = randomUUID();
 
+    // Wrap adapter to record ModelResponseLatency for each generate call.
+    const timedAdapter: ModelAdapter = {
+      name: this.cfg.adapter.name,
+      generate: async (req) => {
+        const start = Date.now();
+        const result = await this.cfg.adapter.generate(req);
+        metrics.histogram("ModelResponseLatency", Date.now() - start);
+        return result;
+      },
+    };
+
     const loopCfg: AgentLoopConfig = {
-      adapter: this.cfg.adapter,
+      adapter: timedAdapter,
       registry: this.cfg.registry,
       grant: this.cfg.grant,
       tools: this.cfg.tools,
@@ -88,6 +104,7 @@ export class Agent {
       ...(this.cfg.maxModelCalls ? { maxModelCalls: this.cfg.maxModelCalls } : {}),
       ...(this.cfg.memory ? { memory: this.cfg.memory } : {}),
       traceId,
+      metrics,
     };
 
     let record!: TurnRecord;
