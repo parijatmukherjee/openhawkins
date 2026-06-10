@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { useAudioAnalysis } from "../../hooks/useAudioAnalysis";
 
 export function VoiceWaveform() {
-  const { amplitude, isSpeaking } = useAudioAnalysis();
+  const { audioData } = useAudioAnalysis();
+  const { amplitude, isSpeaking } = audioData;
 
   const rings = [0.3, 0.5, 0.7, 0.85, 1.0];
 

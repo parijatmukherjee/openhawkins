@@ -1,6 +1,10 @@
 import { motion } from "framer-motion";
 
-export function WindowControls() {
+interface WindowControlsProps {
+  onSettings?: () => void;
+}
+
+export function WindowControls({ onSettings }: WindowControlsProps) {
   const handleMinimize = () => window.electronAPI?.minimizeWindow();
   const handleMaximize = () => window.electronAPI?.maximizeWindow();
   const handleClose = () => window.electronAPI?.closeWindow();
@@ -28,6 +32,15 @@ export function WindowControls() {
         whileTap={{ scale: 0.9 }}
         title="Close"
       />
+      {onSettings && (
+        <motion.button
+          className="ml-2 w-3 h-3 rounded-full bg-text-secondary/80 hover:bg-neon-cyan"
+          onClick={onSettings}
+          whileHover={{ scale: 1.2 }}
+          whileTap={{ scale: 0.9 }}
+          title="Settings"
+        />
+      )}
     </div>
   );
 }

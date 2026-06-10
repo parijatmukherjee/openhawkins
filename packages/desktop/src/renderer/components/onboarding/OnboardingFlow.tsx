@@ -2,6 +2,9 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { WelcomeScreen } from "./WelcomeScreen";
 import { LocaleSetup } from "./LocaleSetup";
+import { VoiceCalibration } from "./VoiceCalibration";
+import { AgentSelection } from "./AgentSelection";
+import { CompletionScreen } from "./CompletionScreen";
 
 const steps = ["welcome", "locale", "voice", "agents", "complete"];
 
@@ -31,11 +34,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       >
         {currentStep === 0 && <WelcomeScreen onNext={handleNext} />}
         {currentStep === 1 && <LocaleSetup onNext={handleNext} />}
-        {currentStep >= 2 && (
-          <div className="h-screen flex items-center justify-center">
-            <p className="text-text-secondary">Step {currentStep + 1} coming soon...</p>
-          </div>
-        )}
+        {currentStep === 2 && <VoiceCalibration onNext={handleNext} />}
+        {currentStep === 3 && <AgentSelection onNext={handleNext} />}
+        {currentStep === 4 && <CompletionScreen onComplete={handleNext} />}
       </motion.div>
     </AnimatePresence>
   );
