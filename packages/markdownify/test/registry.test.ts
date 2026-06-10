@@ -2,6 +2,18 @@ import { describe, it, expect } from "vitest";
 import { ConverterRegistry } from "../src/registry.js";
 import { textConverter } from "../src/converters/text.js";
 import type { Converter } from "../src/types.js";
+import type { Logger } from "../src/logger.js";
+
+function capturingLogger(): {
+  logger: Logger;
+  records: { level: string; event: string; fields?: Record<string, unknown> | undefined }[];
+} {
+  const records: { level: string; event: string; fields?: Record<string, unknown> | undefined }[] = [];
+  return {
+    logger: { log: (level, event, fields) => void records.push({ level, event, fields }) },
+    records,
+  };
+}
 
 const upper: Converter = {
   format: "upper",
@@ -84,6 +96,17 @@ describe("ConverterRegistry", () => {
     expect(res.format).toBe("text");
     expect(res.markdown).toBe("data");
     expect(res.warnings[0]).toMatch(/boom.*failed.*kaboom/);
+  });
+
+  it("logs a warning when a converter fails and degrades to fallback", async () => {
+    const { logger, records } = capturingLogger();
+    const reg = new ConverterRegistry(textConverter, undefined, logger).register(boom);
+    const res = await reg.convert({ data: "data", filename: "x.boom" });
+    expect(res.format).toBe("text");
+    expect(res.markdown).toBe("data");
+    expect(records).toContainEqual(
+      expect.objectContaining({ level: "warn", event: "converter_failed" }),
+    );
   });
 
   it("never throws when a registered converter's accepts() throws", async () => {

@@ -5,6 +5,7 @@ import { diskFreeTool } from "../tools/disk-free.js";
 import type { ToolDefinition } from "../tools/tool.js";
 import type { GroundingMode } from "../grounding/eleven.js";
 import { Agent } from "./agent.js";
+import type { Logger } from "../observability/logger.js";
 
 type DiskFreeTool = ToolDefinition<{ path: string }, { path: string; freeBytes: number }>;
 
@@ -28,10 +29,11 @@ export function buildProbeAgent(opts: {
   adapter: ModelAdapter;
   grounding: GroundingMode;
   diskFree?: number;
+  logger?: Logger;
 }): Promise<Agent> {
   const tool: DiskFreeTool =
     opts.diskFree === undefined ? diskFreeTool : fixedDiskFreeTool(opts.diskFree);
-  const registry = new ToolRegistry();
+  const registry = new ToolRegistry(opts.logger);
   registry.register(tool);
   return Agent.start({
     agentId: "probe-agent",

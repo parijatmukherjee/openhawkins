@@ -1,6 +1,7 @@
 import type { Converter, ConvertInput, MarkdownResult } from "./types.js";
 import { extOf, sniff } from "./detect.js";
 import { asString } from "./converters/text.js";
+import { type Logger, noopLogger } from "./logger.js";
 
 /** Render any thrown value as a short message for a warning. */
 function describe(err: unknown): string {
@@ -22,6 +23,7 @@ export class ConverterRegistry {
   constructor(
     private readonly fallback: Converter,
     private readonly maxInputChars: number = DEFAULT_MAX_INPUT_CHARS,
+    private readonly logger: Logger = noopLogger,
   ) {}
 
   register(c: Converter): this {
@@ -95,6 +97,12 @@ export class ConverterRegistry {
       // failure (e.g. a converter's accepts() threw), not the chosen converter's fault.
       const culprit = picked ? `converter "${converter.format}"` : "converter selection";
       warnings.push(`${culprit} failed: ${describe(err)}; treated as text`);
+      this.logger.log("warn", "converter_failed", {
+        culprit,
+        reason: describe(err),
+        format: picked ? converter.format : undefined,
+        filename: input.filename,
+      });
       try {
         const fb = await this.fallback.convert(input.data);
         return { markdown: fb.markdown, format: this.fallback.format, warnings };

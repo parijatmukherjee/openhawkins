@@ -5,6 +5,7 @@ import { OpenAiCompatAdapter } from "../models/openai-compat.js";
 import type { GroundingMode } from "../grounding/eleven.js";
 import { buildProbeAgent, weakHostFactsModel } from "../eval/scenarios.js";
 import { FileVault } from "../security/vault.js";
+import { JsonLogger } from "../observability/logger.js";
 
 /**
  * `openhawkins ask` — the tiny CLI driver for the vertical slice (spec §2 non-goals:
@@ -118,8 +119,9 @@ async function main(): Promise<void> {
     vault = new FileVault({ path: vaultPath, passphrase: vaultPass });
   }
 
+  const logger = new JsonLogger();
   const adapter = await buildAdapter(modelKind, path, vault);
-  const agent = await buildProbeAgent({ adapter, grounding });
+  const agent = await buildProbeAgent({ adapter, grounding, logger });
   const record = await agent.ask(prompt);
 
   if (asJson) {
