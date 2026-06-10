@@ -32,6 +32,7 @@ import type {
   VisionFrame,
   DetectedObject,
   PresenceState,
+  DetectionModel,
 } from "../src/index.js";
 
 describe("jarvis interface compilation", () => {
@@ -161,5 +162,9 @@ describe("jarvis interface compilation", () => {
 
   it("PresenceState compiles", () => {
     expectTypeOf<PresenceState>().toBeString();
+  });
+
+  it("DetectionModel compiles", () => {
+    expectTypeOf<DetectionModel>().toBeObject();
   });
 });
