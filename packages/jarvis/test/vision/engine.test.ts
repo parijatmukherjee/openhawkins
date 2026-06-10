@@ -1,11 +1,12 @@
-import { describe, it, expect } from "vitest";
-import {
+import { describe, it, expect, expectTypeOf } from "vitest";
+import type {
   VisionEngine,
   VisionConfig,
   VisionFrame,
   DetectedObject,
   PresenceState,
-} from "../../src/vision/engine.js";
+  BurstOptions,
+} from "../../src/index.js";
 
 describe("VisionEngine interface", () => {
   it("should have start method", () => {
@@ -18,7 +19,7 @@ describe("VisionEngine interface", () => {
     expect(engine.start).toBeDefined();
   });
 
-  it("should have correct VisionConfig defaults", () => {
+  it("should accept valid VisionConfig values", () => {
     const config: VisionConfig = {
       pollFps: 2,
       idleFps: 0.5,
@@ -32,7 +33,38 @@ describe("VisionEngine interface", () => {
   });
 
   it("should have correct PresenceState union", () => {
-    const states: PresenceState[] = ["unknown", "present", "away", "multiple_people"];
-    expect(states).toHaveLength(4);
+    expectTypeOf<PresenceState>().toEqualTypeOf<
+      "unknown" | "present" | "away" | "multiple_people"
+    >();
+  });
+
+  it("should accept valid BurstOptions values", () => {
+    const options: BurstOptions = {
+      durationMs: 3000,
+      fps: 10,
+      reason: "motion_detected",
+    };
+    expect(options.durationMs).toBe(3000);
+    expect(options.fps).toBe(10);
+  });
+
+  it("should accept valid VisionFrame values", () => {
+    const frame: VisionFrame = {
+      frameId: "frame-1",
+      timestamp: Date.now(),
+      width: 1920,
+      height: 1080,
+      objects: [],
+    };
+    expect(frame.frameId).toBe("frame-1");
+  });
+
+  it("should accept valid DetectedObject values", () => {
+    const obj: DetectedObject = {
+      label: "person",
+      confidence: 0.95,
+      bbox: { x: 10, y: 20, width: 100, height: 200 },
+    };
+    expect(obj.label).toBe("person");
   });
 });

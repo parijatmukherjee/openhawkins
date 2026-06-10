@@ -26,6 +26,12 @@ import type {
   EventBus,
   BusEvent,
   Subscription,
+  VisionEngine,
+  VisionConfig,
+  BurstOptions,
+  VisionFrame,
+  DetectedObject,
+  PresenceState,
 } from "../src/index.js";
 
 describe("jarvis interface compilation", () => {
@@ -131,5 +137,29 @@ describe("jarvis interface compilation", () => {
 
   it("Subscription compiles", () => {
     expectTypeOf<Subscription>().toBeObject();
+  });
+
+  it("VisionEngine compiles", () => {
+    expectTypeOf<VisionEngine>().toBeObject();
+  });
+
+  it("VisionConfig compiles", () => {
+    expectTypeOf<VisionConfig>().toBeObject();
+  });
+
+  it("BurstOptions compiles", () => {
+    expectTypeOf<BurstOptions>().toBeObject();
+  });
+
+  it("VisionFrame compiles", () => {
+    expectTypeOf<VisionFrame>().toBeObject();
+  });
+
+  it("DetectedObject compiles", () => {
+    expectTypeOf<DetectedObject>().toBeObject();
+  });
+
+  it("PresenceState compiles", () => {
+    expectTypeOf<PresenceState>().toBeString();
   });
 });
