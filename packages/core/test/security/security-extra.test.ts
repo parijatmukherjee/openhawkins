@@ -13,7 +13,7 @@ describe("InMemoryAuditLog — chain break detection", () => {
     await log.append({ kind: "b", data: {}, at: 2 });
     const entries = await log.entries();
     entries[1].prevHash = "deadbeef".repeat(8);
-    expect(await log.verify()).toBe(false);
+    expect((await log.verify()).ok).toBe(false);
   });
 });
 

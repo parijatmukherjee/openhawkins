@@ -95,6 +95,6 @@ describe("the runtime records and audits the grounded turn", () => {
     expect(kinds).toContain("ToolReturned");
     expect(kinds).toContain("CorrectionIssued");
     expect(kinds).toContain("FinalAccepted");
-    expect(await agent.audit.verify()).toBe(true);
+    expect((await agent.audit.verify()).ok).toBe(true);
   });
 });

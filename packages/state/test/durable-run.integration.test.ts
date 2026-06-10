@@ -39,7 +39,7 @@ describe("durable run — replay + audit parity across a reopen", () => {
       audit,
     });
     expect(await built.run.run()).toEqual({ kind: "completed" });
-    expect(await audit.verify()).toBe(true);
+    expect((await audit.verify()).ok).toBe(true);
     const liveEvents = await store.read("probe-agent-session");
     db.close();
 
@@ -52,7 +52,7 @@ describe("durable run — replay + audit parity across a reopen", () => {
     expect(replayedEvents).toEqual(liveEvents); // events survived the reopen
     const phaseEvents = replayedEvents.filter(isPhaseEvent) as PhaseEvent[];
     expect(foldPlaybook(phaseEvents).phase).toBe("Present"); // replay reproduces final state
-    expect(await audit2.verify()).toBe(true); // audit chain survived + verifies
+    expect((await audit2.verify()).ok).toBe(true); // audit chain survived + verifies
     const kinds = (await audit2.entries()).map((e) => e.kind);
     expect(kinds).toContain("FinalAccepted"); // agent turn recorded
     expect(kinds).toContain("PhaseEntered"); // phase transition (unified chain)

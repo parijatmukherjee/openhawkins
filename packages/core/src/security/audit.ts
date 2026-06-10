@@ -21,10 +21,17 @@ export interface AuditEntry extends AuditInput {
   hash: string;
 }
 
+/** Rich diagnostics returned by `verify()`: tells exactly which `seq` broke and why. */
+export interface AuditVerifyResult {
+  ok: boolean;
+  brokenAt?: number;
+  reason?: string;
+}
+
 export interface AuditLog {
   append(input: AuditInput): Promise<AuditEntry>;
   entries(): Promise<AuditEntry[]>;
-  verify(): Promise<boolean>;
+  verify(): Promise<AuditVerifyResult>;
 }
 
 /** The chain's pre-genesis hash — the `prevHash` of the first entry. */
@@ -95,11 +102,16 @@ export class InMemoryAuditLog implements AuditLog {
     return [...this.log];
   }
 
-  async verify(): Promise<boolean> {
+  /** Returns an `AuditVerifyResult` with per-entry diagnostics. */
+  async verify(): Promise<AuditVerifyResult> {
     let prev = GENESIS;
     for (const e of this.log) {
       if (e.prevHash !== prev) {
-        return false;
+        return {
+          ok: false,
+          brokenAt: e.seq,
+          reason: `prevHash mismatch at seq ${e.seq}: expected ${prev.slice(0, 16)}..., got ${e.prevHash.slice(0, 16)}...`,
+        };
       }
       const expected = hashEntry(this.key, prev, {
         seq: e.seq,
@@ -108,10 +120,55 @@ export class InMemoryAuditLog implements AuditLog {
         data: e.data,
       });
       if (e.hash !== expected) {
-        return false;
+        return {
+          ok: false,
+          brokenAt: e.seq,
+          reason: `hash mismatch at seq ${e.seq}: entry hash does not match HMAC-SHA256(key, prevHash + canonical)`,
+        };
       }
       prev = e.hash;
     }
-    return true;
+    return { ok: true };
   }
+}
+
+/**
+ * Re-key every audit entry with a new HMAC key. Returns a fresh `AuditEntry[]` where each
+ * entry's `hash` is recomputed under `newKey` (and `prevHash` is updated to chain through
+ * the new hashes). This is used for periodic key rotation: rotate the chain, persist the
+ * new entries, then store the new key in the Vault.
+ */
+export function rotateAuditKey(
+  oldKey: Buffer,
+  newKey: Buffer,
+  entries: readonly AuditEntry[],
+): AuditEntry[] {
+  const out: AuditEntry[] = [];
+  let prevOld = GENESIS;
+  let prevNew = GENESIS;
+  for (const e of entries) {
+    if (e.prevHash !== prevOld) {
+      throw new Error(
+        `rotateAuditKey: chain broken at seq ${e.seq} — prevHash mismatch`,
+      );
+    }
+    const expectedOld = hashEntry(oldKey, prevOld, {
+      seq: e.seq,
+      at: e.at,
+      kind: e.kind,
+      data: e.data,
+    });
+    if (e.hash !== expectedOld) {
+      throw new Error(
+        `rotateAuditKey: chain broken at seq ${e.seq} — entry hash does not match old key`,
+      );
+    }
+    const base = { seq: e.seq, at: e.at, kind: e.kind, data: e.data };
+    const hash = hashEntry(newKey, prevNew, base);
+    const rekeyed: AuditEntry = { ...base, prevHash: prevNew, hash };
+    out.push(rekeyed);
+    prevOld = e.hash;
+    prevNew = hash;
+  }
+  return out;
 }

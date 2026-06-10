@@ -37,7 +37,7 @@ describe("Agent (runtime facade) — audit branches", () => {
     expect(record.accepted).toBe(false);
     const kinds = (await agent.audit.entries()).map((e) => e.kind);
     expect(kinds).toContain("GroundingFailed");
-    expect(await agent.audit.verify()).toBe(true);
+    expect((await agent.audit.verify()).ok).toBe(true);
   });
 
   it("audits a failed (capability-denied) tool call with its error", async () => {

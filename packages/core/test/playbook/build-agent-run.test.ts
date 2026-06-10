@@ -35,7 +35,7 @@ describe("buildAgentRun", () => {
     expect(auditKinds).toContain("FinalAccepted");
     expect(auditKinds).toContain("PhaseEntered");
     expect(auditKinds).toContain("PhaseGatePassed");
-    expect(await audit.verify()).toBe(true);
+    expect((await audit.verify()).ok).toBe(true);
 
     expect(agent).toBeDefined();
     expect((await store.read("probe-agent-session")).length).toBeGreaterThan(0);

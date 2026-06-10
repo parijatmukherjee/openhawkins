@@ -32,12 +32,6 @@ export interface BuiltDurableAgentRun extends BuiltAgentRun {
   close(): void;
 }
 
-/**
- * The durable composition root (F-C1/F-C2 at runtime): one SQLite db holds the event
- * store AND the keyed audit; the audit HMAC key is resolved from a `FileVault` (minted on
- * first use). This package may import both `core` and `state` (state depends on core), so
- * the wiring `core` itself cannot do (cycle) lives here.
- */
 export async function buildDurableAgentRun(
   opts: DurableAgentRunOpts,
 ): Promise<BuiltDurableAgentRun> {
@@ -55,14 +49,18 @@ export async function buildDurableAgentRun(
   return { ...built, close: () => closeDriver(db) };
 }
 
-/** Reopen an existing durable db + vault and report its event count, audit size, and
- *  whether the keyed audit chain verifies — the cross-process durability proof. */
 export async function verifyDurable(opts: {
   dbPath: string;
   vaultPath: string;
   passphrase: string;
   sessionId?: string;
-}): Promise<{ events: number; auditEntries: number; auditVerified: boolean }> {
+}): Promise<{
+  events: number;
+  auditEntries: number;
+  auditVerified: boolean;
+  auditBrokenAt?: number;
+  auditReason?: string;
+}> {
   const db = openDatabase({ path: opts.dbPath });
   try {
     const key = await resolveAuditKey(
@@ -72,7 +70,17 @@ export async function verifyDurable(opts: {
     const audit = new SqliteAuditLog(db, key);
     const events = (await store.read(opts.sessionId ?? "probe-agent-session")).length;
     const entries = await audit.entries();
-    return { events, auditEntries: entries.length, auditVerified: await audit.verify() };
+    const result = await audit.verify();
+    const out: {
+      events: number;
+      auditEntries: number;
+      auditVerified: boolean;
+      auditBrokenAt?: number;
+      auditReason?: string;
+    } = { events, auditEntries: entries.length, auditVerified: result.ok };
+    if (result.brokenAt !== undefined) out.auditBrokenAt = result.brokenAt;
+    if (result.reason !== undefined) out.auditReason = result.reason;
+    return out;
   } finally {
     closeDriver(db);
   }

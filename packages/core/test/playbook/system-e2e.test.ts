@@ -77,7 +77,7 @@ describe("system end-to-end robustness", () => {
     expect(kinds).toContain("ToolReturned");
     expect(kinds).toContain("FinalAccepted");
     expect(kinds).toContain("PhaseEntered");
-    expect(await built.audit.verify()).toBe(true);
+    expect((await built.audit.verify()).ok).toBe(true);
   });
 
   it("replans through a flaky Validate, then completes", async () => {
@@ -92,7 +92,7 @@ describe("system end-to-end robustness", () => {
     expect(await built.run.run()).toEqual({ kind: "completed" });
     const kinds = (await built.audit.entries()).map((e) => e.kind);
     expect(kinds).toContain("PhaseGateFailed");
-    expect(await built.audit.verify()).toBe(true);
+    expect((await built.audit.verify()).ok).toBe(true);
   });
 
   it("escalates when Validate never passes within budget", async () => {
@@ -106,7 +106,7 @@ describe("system end-to-end robustness", () => {
     );
     const result = await built.run.run();
     expect(result.kind).toBe("escalated");
-    expect(await built.audit.verify()).toBe(true);
+    expect((await built.audit.verify()).ok).toBe(true);
   });
 
   it("produces one unified, verifiable audit chain over the whole run", async () => {
@@ -120,7 +120,7 @@ describe("system end-to-end robustness", () => {
     expect(entries.map((e) => e.kind)).toEqual(
       expect.arrayContaining(["FinalAccepted", "PhaseEntered"]),
     );
-    expect(await built.audit.verify()).toBe(true);
+    expect((await built.audit.verify()).ok).toBe(true);
   });
 
   it("replays deterministically: same scripted inputs -> identical phase-event trace", async () => {

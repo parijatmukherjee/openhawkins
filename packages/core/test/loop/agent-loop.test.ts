@@ -7,6 +7,8 @@ import { diskFreeTool } from "../../src/tools/disk-free.js";
 import type { AgentGrant } from "../../src/security/capability.js";
 import type { AcceptPolicy } from "../../src/loop/turn.js";
 
+import type { MetricsCollector } from "../../src/observability/metrics.js";
+
 const grant: AgentGrant = {
   agentId: "probe-agent",
   capabilities: [{ name: "host:info" }],

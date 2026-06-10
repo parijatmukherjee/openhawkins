@@ -48,7 +48,7 @@ describe("PlaybookRun.start", () => {
 
     const audit = await d.audit.entries();
     expect(audit.map((e) => e.kind)).toEqual(["PhaseEntered"]);
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("throws if the manifest has no phases", async () => {
@@ -81,7 +81,7 @@ describe("PlaybookRun.advance", () => {
       "PhaseGatePassed:Research",
       "PhaseEntered:Plan",
     ]);
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("a soft gate pauses the run awaiting an operator (no new events)", async () => {
@@ -106,7 +106,7 @@ describe("PlaybookRun.advance", () => {
     const events = await phasesOf(d.store as InMemoryEventStore);
     expect(events).toContain("PhaseGateFailed:Validate");
     expect(events[events.length - 1]).toBe("PhaseEntered:Plan");
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("escalates when the replan budget is exhausted", async () => {
@@ -123,7 +123,7 @@ describe("PlaybookRun.advance", () => {
     expect(status).toEqual({ kind: "escalated", phase: "Validate", reason: "still red" });
     const events = await phasesOf(d.store as InMemoryEventStore);
     expect(events[events.length - 1]).toBe("PhaseGateFailed:Validate");
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
 
     // re-advancing an escalated run is a no-op: it stays escalated and emits no new event
     const countBefore = (await (d.store as InMemoryEventStore).read("s1")).length;
@@ -177,7 +177,7 @@ describe("PlaybookRun.override", () => {
       "PhaseOverridden:Research",
       "PhaseEntered:Plan",
     ]);
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("a denied override (no capability) changes nothing but audits the attempt", async () => {
@@ -191,7 +191,7 @@ describe("PlaybookRun.override", () => {
     expect(await phasesOf(d.store as InMemoryEventStore)).toEqual(["PhaseEntered:Research"]);
     const audit = await d.audit.entries();
     expect(audit.map((e) => e.kind)).toContain("PhaseOverrideDenied");
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("a granted override at the terminal phase is a no-op done", async () => {

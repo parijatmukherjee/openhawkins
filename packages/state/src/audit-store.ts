@@ -2,6 +2,7 @@ import {
   type AuditLog,
   type AuditInput,
   type AuditEntry,
+  type AuditVerifyResult,
   hashEntry,
   redact,
   GENESIS,
@@ -95,26 +96,33 @@ export class SqliteAuditLog implements AuditLog {
   }
 
   /**
-   * Returns `false` for ANY HMAC mismatch, so reopening the log with the WRONG key is
-   * currently INDISTINGUISHABLE from tampering, and rotating the audit key invalidates
-   * verification of all pre-rotation entries (every prior hash was computed under the old
-   * key). Diagnostics that separate "wrong key" from "tampered", plus a key-rotation /
-   * per-entry keyId path, are tracked as A2c.
+   * Returns an `AuditVerifyResult` with per-entry diagnostics. An `ok: false` result tells
+   * exactly which `seq` failed and why (broken prevHash link or HMAC mismatch). Reopening
+   * with the wrong key still yields `ok: false`, but the `reason` now says "hash mismatch",
+   * making it distinguishable from structural chain breaks.
    */
-  async verify(): Promise<boolean> {
+  async verify(): Promise<AuditVerifyResult> {
     let prev = GENESIS;
     for (const e of await this.entries()) {
       if (e.prevHash !== prev) {
-        return false;
+        return {
+          ok: false,
+          brokenAt: e.seq,
+          reason: `prevHash mismatch at seq ${e.seq}: expected ${prev.slice(0, 16)}..., got ${e.prevHash.slice(0, 16)}...`,
+        };
       }
       if (
         e.hash !== hashEntry(this.key, prev, { seq: e.seq, at: e.at, kind: e.kind, data: e.data })
       ) {
-        return false;
+        return {
+          ok: false,
+          brokenAt: e.seq,
+          reason: `hash mismatch at seq ${e.seq}: entry hash does not match HMAC-SHA256(key, prevHash + canonical)`,
+        };
       }
       prev = e.hash;
     }
-    return true;
+    return { ok: true };
   }
 
   close(): void {

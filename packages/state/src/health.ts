@@ -18,11 +18,6 @@ export interface HealthOpts {
   lookbackMs?: number;
 }
 
-/**
- * Check the health of the durable runtime: DB connectivity, vault unlock status,
- * whether the last audit chain still verifies, and the recent error rate (turn
- * failures / total turns within the lookback window).
- */
 export async function checkHealth(opts: HealthOpts): Promise<HealthCheck> {
   let dbOk = false;
   let vaultUnlocked = false;
@@ -37,25 +32,23 @@ export async function checkHealth(opts: HealthOpts): Promise<HealthCheck> {
     try {
       dbOk = true;
 
-      // Vault: instantiate + try to read a key to prove it unlocks
       const vault = new FileVault({ path: opts.vaultPath, passphrase: opts.passphrase });
       try {
-        await vault.get("__health_probe__"); // may return null; that's fine
+        await vault.get("__health_probe__");
         vaultUnlocked = true;
       } catch {
         vaultUnlocked = false;
       }
 
-      // Audit: verify chain
       try {
         const key = await resolveAuditKey(vault);
         const audit = new SqliteAuditLog(db, key);
-        lastAuditVerified = await audit.verify();
+        const result = await audit.verify();
+        lastAuditVerified = result.ok;
       } catch {
         lastAuditVerified = false;
       }
 
-      // Error rate: count TurnFailed events in lookback window
       try {
         const store = new SqliteEventStore(db);
         const allEvents = await store.read("probe-agent-session");

@@ -15,7 +15,7 @@ describe("SqliteAuditLog", () => {
     const e1 = await a.append({ kind: "Y", data: { v: 2 }, at: 20 });
     expect(e1.seq).toBe(1);
     expect(e1.prevHash).toBe(e0.hash);
-    expect(await a.verify()).toBe(true);
+    expect((await a.verify()).ok).toBe(true);
     expect((await a.entries()).map((e) => e.kind)).toEqual(["X", "Y"]);
   });
 
@@ -41,7 +41,7 @@ describe("SqliteAuditLog", () => {
     const e = await a2.append({ kind: "B", data: {}, at: 2 });
     expect(e.seq).toBe(1);
     expect(e.prevHash).toBe((await a1.entries())[0].hash);
-    expect(await a2.verify()).toBe(true);
+    expect((await a2.verify()).ok).toBe(true);
   });
 
   it("serializes concurrent appends without forking the chain", async () => {
@@ -51,7 +51,7 @@ describe("SqliteAuditLog", () => {
     );
     const entries = await a.entries();
     expect(entries.map((e) => e.seq)).toEqual(Array.from({ length: 20 }, (_, i) => i));
-    expect(await a.verify()).toBe(true);
+    expect((await a.verify()).ok).toBe(true);
   });
 
   it("verify() returns false if a persisted row is tampered", async () => {
@@ -59,7 +59,7 @@ describe("SqliteAuditLog", () => {
     const a = new SqliteAuditLog(db, KEY);
     await a.append({ kind: "A", data: { v: 1 }, at: 1 });
     db.prepare("UPDATE audit SET data = ? WHERE seq = 0").run(JSON.stringify({ v: 999 }));
-    expect(await a.verify()).toBe(false);
+    expect((await a.verify()).ok).toBe(false);
   });
 
   it("verify() returns false if a persisted prev_hash is broken", async () => {
@@ -67,7 +67,7 @@ describe("SqliteAuditLog", () => {
     const a = new SqliteAuditLog(db, KEY);
     await a.append({ kind: "A", data: {}, at: 1 });
     db.prepare("UPDATE audit SET prev_hash = ? WHERE seq = 0").run("f".repeat(64));
-    expect(await a.verify()).toBe(false);
+    expect((await a.verify()).ok).toBe(false);
   });
 
   it("opens from a path and closes cleanly", async () => {

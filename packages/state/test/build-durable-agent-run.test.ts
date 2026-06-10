@@ -29,7 +29,7 @@ describe("buildDurableAgentRun + verifyDurable", () => {
       validateGate: new ValidateGate(async () => ({ ok: true })),
     });
     expect(await built.run.run()).toEqual({ kind: "completed" });
-    expect(await built.audit.verify()).toBe(true);
+    expect((await built.audit.verify()).ok).toBe(true);
     built.close();
 
     const v = await verifyDurable({ dbPath, vaultPath, passphrase });

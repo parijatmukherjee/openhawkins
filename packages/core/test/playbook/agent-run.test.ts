@@ -66,7 +66,7 @@ describe("AgentRun.run — clean run", () => {
       "PhaseGatePassed:Validate",
       "PhaseEntered:Present",
     ]);
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("returns completed immediately for a run already at the terminal phase", async () => {
@@ -106,7 +106,7 @@ describe("AgentRun.run — robustness matrix", () => {
     const events = await phasesOf(d.store as InMemoryEventStore);
     expect(events).toContain("PhaseGateFailed:Validate");
     expect(events[events.length - 1]).toBe("PhaseEntered:Present");
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("escalates when the replan budget is exhausted", async () => {
@@ -122,7 +122,7 @@ describe("AgentRun.run — robustness matrix", () => {
       operator: approveAll,
     }).run();
     expect(result).toEqual({ kind: "escalated", phase: "Validate", reason: "still red" });
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("halts when the operator declines a soft phase", async () => {
@@ -141,7 +141,7 @@ describe("AgentRun.run — robustness matrix", () => {
     expect(result).toEqual({ kind: "halted-by-operator", phase: "Research" });
     const audit = await d.audit.entries();
     expect(audit.map((e) => e.kind)).toContain("PhaseOverrideDenied");
-    expect(await d.audit.verify()).toBe(true);
+    expect((await d.audit.verify()).ok).toBe(true);
   });
 
   it("surfaces a throwing phase handler (work failure is not swallowed)", async () => {
