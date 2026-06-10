@@ -17,6 +17,7 @@ export const SCHEMA: Migration[] = [
       );
       CREATE INDEX events_by_session ON events (session_id, seq);
     `,
+    down: `DROP TABLE IF EXISTS events`,
   },
   {
     version: 2,
@@ -31,5 +32,6 @@ export const SCHEMA: Migration[] = [
         hash      TEXT NOT NULL
       );
     `,
+    down: `DROP TABLE IF EXISTS audit`,
   },
 ];

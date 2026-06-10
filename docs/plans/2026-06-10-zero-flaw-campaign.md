@@ -48,7 +48,7 @@
 - Modify: `packages/core/src/session/session.ts`
 - Test: `packages/core/test/session/events.test.ts`, `packages/state/test/event-store.test.ts`
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 ```ts
 it("reads events in paginated chunks", async () => {
@@ -71,9 +71,9 @@ it("reads events in paginated chunks", async () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
-- [ ] **Step 3: Add pagination to EventStore interface + implementations**
+- [x] **Step 3: Add pagination to EventStore interface + implementations**
 
 Change `EventStore.read` signature:
 

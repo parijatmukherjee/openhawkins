@@ -6,6 +6,8 @@ import { checkHealth } from "../health.js";
 import { anchorAuditChain, verifyAnchor, FileVault, resolveAuditKey } from "@openhawkins/core";
 import { openDatabase } from "../driver/driver.js";
 import { SqliteAuditLog } from "../audit-store.js";
+import { rollback } from "../migrate.js";
+import { SCHEMA } from "../schema.js";
 
 /**
  * `openhawkins-run` — a durable, keyed-audit agent run over SQLite (A1b: F-C1/F-C2 at
@@ -17,6 +19,8 @@ import { SqliteAuditLog } from "../audit-store.js";
  * recent error rate.
  * `--anchor` writes an external tamper-evident anchor after the run.
  * `--verify-anchor` checks the external anchor against the current audit tip before running.
+ * `--vacuum` runs VACUUM on the database before starting.
+ * `--rollback <steps>` undoes the last N migrations before starting.
  */
 function flag(args: string[], name: string, fallback: string): string {
   const i = args.indexOf(name);
@@ -35,6 +39,37 @@ async function main(): Promise<void> {
   const asJson = args.includes("--json");
   const anchorPath = flag(args, "--anchor", "");
   const verifyAnchorPath = flag(args, "--verify-anchor", "");
+  const vacuum = args.includes("--vacuum");
+  const rollbackStepsRaw = flag(args, "--rollback", "");
+  const rollbackSteps = rollbackStepsRaw ? Number(rollbackStepsRaw) : undefined;
+
+  if (vacuum || rollbackSteps !== undefined) {
+    const db = openDatabase({ path: dbPath });
+    try {
+      if (vacuum) {
+        db.vacuum();
+        console.log(asJson ? JSON.stringify({ mode: "vacuum", ok: true }) : `vacuum: ok`);
+      }
+      if (rollbackSteps !== undefined) {
+        const rolled = rollback(db, SCHEMA, rollbackSteps);
+        console.log(
+          asJson
+            ? JSON.stringify({ mode: "rollback", rolled })
+            : `rollback: ${rolled} migration(s) rolled back`,
+        );
+      }
+    } finally {
+      db.close();
+    }
+    if (
+      !args.includes("--verify") &&
+      !args.includes("--health") &&
+      !anchorPath &&
+      !verifyAnchorPath
+    ) {
+      return;
+    }
+  }
 
   if (verifyAnchorPath) {
     const db = openDatabase({ path: dbPath });
