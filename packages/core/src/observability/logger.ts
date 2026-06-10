@@ -7,7 +7,7 @@ export type LogFields = Record<string, unknown>;
  *  interface (not a concrete logger), so tests inject a capturing logger and production
  *  injects the JSON-to-stderr one. */
 export interface Logger {
-  log(level: LogLevel, event: string, fields?: LogFields): void;
+  log(level: LogLevel, event: string, fields?: LogFields, traceId?: string): void;
 }
 
 /** The default: drops everything. Library and test constructions stay silent unless a
@@ -39,11 +39,15 @@ export class JsonLogger implements Logger {
     this.base = opts.base ?? {};
   }
 
-  log(level: LogLevel, event: string, fields?: LogFields): void {
+  log(level: LogLevel, event: string, fields?: LogFields, traceId?: string): void {
     if (SEVERITY[level] < SEVERITY[this.min]) {
       return;
     }
     const payload = fields ? (redact(fields) as LogFields) : {};
-    this.sink(JSON.stringify({ level, event, ...this.base, ...payload }));
+    const out: Record<string, unknown> = { level, event, ...this.base, ...payload };
+    if (traceId !== undefined) {
+      out.traceId = traceId;
+    }
+    this.sink(JSON.stringify(out));
   }
 }

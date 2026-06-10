@@ -4,6 +4,8 @@ import type { Capability } from "../security/capability.js";
 /** Minimal execution context handed to a tool handler. Expands in later milestones. */
 export interface ToolContext {
   agentId: string;
+  /** Correlation ID for the current turn, propagated to logs and audit. */
+  traceId?: string;
 }
 
 /** A registered tool: typed args/result schemas, required capabilities, a handler. */

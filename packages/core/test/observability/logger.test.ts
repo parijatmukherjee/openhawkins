@@ -69,4 +69,23 @@ describe("JsonLogger", () => {
     for (const lvl of order) log.log(lvl, lvl);
     expect(s.lines).toHaveLength(4);
   });
+
+  it("includes traceId in the output when provided", () => {
+    const s = sink();
+    new JsonLogger({ sink: s.write }).log("info", "hello", { n: 1 }, "trace-abc-123");
+    expect(s.lines).toHaveLength(1);
+    expect(JSON.parse(s.lines[0])).toEqual({
+      level: "info",
+      event: "hello",
+      n: 1,
+      traceId: "trace-abc-123",
+    });
+  });
+
+  it("omits traceId when not provided", () => {
+    const s = sink();
+    new JsonLogger({ sink: s.write }).log("info", "hello", { n: 1 });
+    expect(s.lines).toHaveLength(1);
+    expect(JSON.parse(s.lines[0])).not.toHaveProperty("traceId");
+  });
 });

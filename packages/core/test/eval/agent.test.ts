@@ -98,4 +98,25 @@ describe("Agent (runtime facade) — audit branches", () => {
     // The very first model request carries no system message.
     expect(record.modelCalls[0].request[0].role).toBe("user");
   });
+
+  it("generates a traceId per turn and threads it through audit entries", async () => {
+    const adapter = new ScriptedAdapter([{ content: "hi", toolCalls: [] }]);
+    const agent = await Agent.start({
+      agentId: "probe-agent",
+      adapter,
+      registry: registry(),
+      grant,
+      tools: [diskFreeTool],
+      grounding: { mode: "off" },
+      clock: fixedClock(0),
+    });
+
+    const record = await agent.ask("hi");
+    expect(record.traceId).toBeDefined();
+    expect(typeof record.traceId).toBe("string");
+
+    const entries = await agent.audit.entries();
+    const finalEntry = entries.find((e) => e.kind === "FinalAccepted");
+    expect((finalEntry?.data as { traceId?: string }).traceId).toBe(record.traceId);
+  });
 });

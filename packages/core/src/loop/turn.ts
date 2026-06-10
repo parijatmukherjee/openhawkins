@@ -31,6 +31,8 @@ export interface TurnRecord {
   accepted: boolean;
   /** e.g. "ungrounded" — set by `preferred` mode; surfaced to the audit. */
   flagged?: string;
+  /** Correlation ID generated per turn, propagated through model calls, tool calls, and audit entries. */
+  traceId?: string;
 }
 
 /** What the loop asks the accept policy about a model-produced final answer. */

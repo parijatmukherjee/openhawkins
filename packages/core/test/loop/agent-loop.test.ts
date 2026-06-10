@@ -148,4 +148,46 @@ describe("runAgentTurn (native tool-calling round-trip)", () => {
     expect(record.accepted).toBe(true);
     expect(record.toolCalls).toHaveLength(0);
   });
+
+  it("propagates traceId into the TurnRecord when provided", async () => {
+    const adapter = new ScriptedAdapter([{ content: "hello", toolCalls: [] }]);
+    const traceId = "trace-abc-123";
+    const record = await runAgentTurn(
+      {
+        adapter,
+        registry: registryWithDiskFree(),
+        grant,
+        tools: [diskFreeTool],
+        policy: acceptAlways,
+        traceId,
+      },
+      "hi",
+    );
+    expect(record.traceId).toBe(traceId);
+  });
+
+  it("passes traceId through ToolContext to the registry invoke", async () => {
+    const adapter = new ScriptedAdapter([
+      { content: "", toolCalls: [{ id: "oc-1", tool: "disk_free", args: { path: tmpdir() } }] },
+      { content: "done", toolCalls: [] },
+    ]);
+
+    let capturedCtx: unknown;
+    const registry = new ToolRegistry();
+    registry.register({
+      ...diskFreeTool,
+      handler: async (args, ctx) => {
+        capturedCtx = ctx;
+        return diskFreeTool.handler(args, ctx);
+      },
+    });
+
+    const traceId = "trace-tool-ctx";
+    await runAgentTurn(
+      { adapter, registry, grant, tools: [diskFreeTool], traceId },
+      "disk?",
+    );
+
+    expect((capturedCtx as { traceId?: string }).traceId).toBe(traceId);
+  });
 });

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Session } from "../session/session.js";
 import { InMemoryEventStore, type EventStore } from "../session/events.js";
 import { type Clock, systemClock } from "../util/clock.js";
@@ -75,6 +76,8 @@ export class Agent {
       }
     }
 
+    const traceId = randomUUID();
+
     const loopCfg: AgentLoopConfig = {
       adapter: this.cfg.adapter,
       registry: this.cfg.registry,
@@ -84,6 +87,7 @@ export class Agent {
       ...(systemPrompt ? { systemPrompt } : {}),
       ...(this.cfg.maxModelCalls ? { maxModelCalls: this.cfg.maxModelCalls } : {}),
       ...(this.cfg.memory ? { memory: this.cfg.memory } : {}),
+      traceId,
     };
 
     let record!: TurnRecord;
@@ -101,7 +105,7 @@ export class Agent {
       await this.audit.append({
         kind: "ModelResponded",
         at: this.clock(),
-        data: { content: mc.content, toolCalls: mc.toolCalls.length },
+        data: { content: mc.content, toolCalls: mc.toolCalls.length, traceId: rec.traceId },
       });
     }
     for (const tc of rec.toolCalls) {
@@ -111,6 +115,7 @@ export class Agent {
         data: {
           tool: tc.call.tool,
           ok: tc.result.ok,
+          traceId: rec.traceId,
           ...(tc.result.ok ? {} : { error: tc.result.error }),
         },
       });
@@ -119,7 +124,7 @@ export class Agent {
       await this.audit.append({
         kind: "CorrectionIssued",
         at: this.clock(),
-        data: { correction },
+        data: { correction, traceId: rec.traceId },
       });
     }
     await this.audit.append({
@@ -127,6 +132,7 @@ export class Agent {
       at: this.clock(),
       data: {
         accepted: rec.accepted,
+        traceId: rec.traceId,
         ...(rec.final ? { final: rec.final } : {}),
         ...(rec.flagged ? { flagged: rec.flagged } : {}),
       },

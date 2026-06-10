@@ -30,6 +30,8 @@ export interface AgentLoopConfig {
   maxModelCalls?: number;
   /** Optional memory store for context injection before each turn. */
   memory?: MemoryStore;
+  /** Correlation ID propagated through model calls, tool calls, and audit entries. */
+  traceId?: string;
 }
 
 /**
@@ -42,7 +44,7 @@ export interface AgentLoopConfig {
 export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise<TurnRecord> {
   const policy = cfg.policy ?? acceptAlways;
   const maxModelCalls = cfg.maxModelCalls ?? 6;
-  const ctx: ToolContext = { agentId: cfg.grant.agentId };
+  const ctx: ToolContext = { agentId: cfg.grant.agentId, ...(cfg.traceId ? { traceId: cfg.traceId } : {}) };
 
   const toolSchemas: ToolSchema[] = cfg.tools.map((t) => ({
     name: t.name,
@@ -62,6 +64,7 @@ export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise
     toolCalls: [],
     corrections: [],
     accepted: false,
+    ...(cfg.traceId ? { traceId: cfg.traceId } : {}),
   };
 
   while (record.modelCalls.length < maxModelCalls) {
