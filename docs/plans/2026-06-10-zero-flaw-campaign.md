@@ -454,21 +454,21 @@ export interface VerifyResult {
 
 ## Phase 5: Final Gate
 
-- [ ] **Step 1: Full repo gate**
+- [x] **Step 1: Full repo gate** ✅
 
 ```bash
 npm run build && npm run lint && npm run format:check && npm run coverage && npm run test:functional
 ```
 
-- [ ] **Step 2: Docker gate**
+- [x] **Step 2: Docker gate** ✅
 
 ```bash
 docker build -f Dockerfile.test -t openhawkins-test . && docker run --rm openhawkins-test
 ```
 
-- [ ] **Step 3: Update CHECKPOINT.md and architecture assessment**
+- [x] **Step 3: Update CHECKPOINT.md and architecture assessment** ✅
 
-- [ ] **Step 4: Commit all docs updates**
+- [x] **Step 4: Commit all docs updates** ✅
 
 ---
 
@@ -479,7 +479,7 @@ docker build -f Dockerfile.test -t openhawkins-test . && docker run --rm openhaw
 | P0        | 5 critical runtime gaps | ✅ DONE   |
 | P1        | 5 boundary hardening    | ✅ DONE   |
 | P2        | 4 observability/scale   | ✅ DONE   |
-| P3        | 10 operational polish   | 🟡 OPEN   |
-| **Total** | **24**                  | **14/24** |
+| P3        | 10 operational polish   | ✅ DONE   |
+| **Total** | **24**                  | **24/24 ✅** |
 
 **Target: 24/24 ✅ (ZERO flaws, ZERO bugs)**
