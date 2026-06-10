@@ -7,7 +7,7 @@ import {
 } from "../../src/playbook/manifest.js";
 
 describe("playbook manifest", () => {
-  it("default manifest is the CLAUDE.md spine with a Validate->Plan onFail", () => {
+  it("default manifest is the AGENT.md spine with a Validate->Plan onFail", () => {
     expect(DEFAULT_MANIFEST.phases.map((p) => p.phase)).toEqual([
       "Research",
       "Plan",
