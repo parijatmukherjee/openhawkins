@@ -11,6 +11,7 @@ export * from "./security/vault.js";
 export * from "./security/redact.js";
 export * from "./security/taint.js";
 export * from "./security/audit.js";
+export * from "./observability/logger.js";
 export * from "./models/adapter.js";
 export * from "./models/http.js";
 export * from "./models/scripted.js";

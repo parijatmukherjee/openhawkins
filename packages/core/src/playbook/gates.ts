@@ -1,5 +1,6 @@
 import type { GateVerdict } from "./machine.js";
 import type { Phase } from "./manifest.js";
+import { type Logger, noopLogger } from "../observability/logger.js";
 
 /** What a gate is given to decide a phase. Minimal in P1/P2; the P3 runner enriches it. */
 export interface GateContext {
@@ -41,7 +42,10 @@ export type ValidatePredicate = () => Promise<GateCheck>;
  * throws is caught and becomes a `failed` verdict, so a broken gate cannot crash the run.
  */
 export class ValidateGate implements PhaseGate {
-  constructor(private readonly check: ValidatePredicate) {}
+  constructor(
+    private readonly check: ValidatePredicate,
+    private readonly logger: Logger = noopLogger,
+  ) {}
 
   async evaluate(): Promise<GateVerdict> {
     try {
@@ -50,7 +54,9 @@ export class ValidateGate implements PhaseGate {
         ? { status: "passed" }
         : { status: "failed", reason: result.detail ?? "validation failed" };
     } catch (err) {
-      return { status: "failed", reason: err instanceof Error ? err.message : String(err) };
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.log("warn", "gate_predicate_threw", { reason });
+      return { status: "failed", reason };
     }
   }
 }

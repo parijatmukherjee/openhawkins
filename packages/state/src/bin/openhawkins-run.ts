@@ -1,6 +1,6 @@
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ScriptedOperator, weakHostFactsModel, ValidateGate } from "@openhawkins/core";
+import { ScriptedOperator, weakHostFactsModel, ValidateGate, JsonLogger } from "@openhawkins/core";
 import { buildDurableAgentRun, verifyDurable } from "../build-durable-agent-run.js";
 
 /**
@@ -43,6 +43,9 @@ async function main(): Promise<void> {
       Array.from({ length: 8 }, () => ({ approve: true as const, actor: "cli", reason: "auto" })),
     ),
     validateGate: new ValidateGate(async () => ({ ok: true })),
+    // Observability on for the durable production entrypoint: swallow-point diagnostics to
+    // stderr; flows through `...runOpts` into buildAgentRun's logger seam.
+    logger: new JsonLogger(),
   });
   const result = await built.run.run();
   const verified = await built.audit.verify();

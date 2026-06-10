@@ -1,5 +1,6 @@
 import type { ToolDefinition, ToolCall, ToolResult, ToolContext } from "./tool.js";
 import { type AgentGrant, grantSatisfies } from "../security/capability.js";
+import { type Logger, noopLogger } from "../observability/logger.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyToolDefinition = ToolDefinition<any, any>;
@@ -7,6 +8,8 @@ type AnyToolDefinition = ToolDefinition<any, any>;
 /** Registry of typed, capability-gated tools. `invoke` never throws. */
 export class ToolRegistry {
   private readonly tools = new Map<string, AnyToolDefinition>();
+
+  constructor(private readonly logger: Logger = noopLogger) {}
 
   // Generic public signature so callers get full type-checking on the tool they
   // pass; the single internal cast erases the type variables for heterogeneous
@@ -35,12 +38,21 @@ export class ToolRegistry {
     // Confused-deputy guard: the executing context must be the granted agent, so a
     // caller bug can't run a tool under the wrong agent's authority.
     if (grant.agentId !== ctx.agentId) {
+      this.logger.log("error", "agent_mismatch", {
+        tool: call.tool,
+        grantAgent: grant.agentId,
+        ctxAgent: ctx.agentId,
+      });
       return fail(call, `agent mismatch: grant is for ${grant.agentId}, context is ${ctx.agentId}`);
     }
 
     // The Lab: default-deny capability gate.
     const missing = tool.capabilities.filter((c) => !grantSatisfies(grant, c));
     if (missing.length > 0) {
+      this.logger.log("warn", "capability_denied", {
+        tool: call.tool,
+        missing: missing.map((c) => c.name),
+      });
       return fail(call, `capability denied: ${missing.map((c) => c.name).join(", ")}`);
     }
 
@@ -59,7 +71,9 @@ export class ToolRegistry {
       }
       return { id: call.id, tool: call.tool, ok: true, data: parsedResult.data };
     } catch (err) {
-      return fail(call, err instanceof Error ? err.message : String(err));
+      const error = err instanceof Error ? err.message : String(err);
+      this.logger.log("error", "tool_threw", { tool: call.tool, error });
+      return fail(call, error);
     }
   }
 }

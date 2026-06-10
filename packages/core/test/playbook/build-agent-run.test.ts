@@ -7,6 +7,7 @@ import { ValidateGate } from "../../src/playbook/gates.js";
 import { InMemoryEventStore, type DomainEvent } from "../../src/session/events.js";
 import { RedactingEventStore } from "../../src/session/redacting-store.js";
 import { InMemoryAuditLog } from "../../src/security/audit.js";
+import { type Logger } from "../../src/observability/logger.js";
 import { tmpdir } from "node:os";
 
 const approve = () =>
@@ -74,5 +75,18 @@ describe("buildAgentRun", () => {
     } as DomainEvent);
     expect((await store.read("probe-agent-session")).length).toBeGreaterThan(0);
     expect(built.audit).toBe(audit);
+  });
+
+  it("accepts an injected logger without changing the happy-path result", async () => {
+    const logger: Logger = { log: () => {} };
+    const built = await buildAgentRun({
+      adapter: weakHostFactsModel(tmpdir()),
+      grounding: "cited",
+      prompts: { Execute: "How much disk space is free on this machine?" },
+      operator: approve(),
+      validateGate: new ValidateGate(async () => ({ ok: true })), // fake gate (no recursion)
+      logger,
+    });
+    expect(await built.run.run()).toEqual({ kind: "completed" });
   });
 });

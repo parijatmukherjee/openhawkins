@@ -3,6 +3,22 @@ import { z } from "zod";
 import { ToolRegistry } from "../../src/tools/registry.js";
 import type { ToolDefinition } from "../../src/tools/tool.js";
 import type { AgentGrant } from "../../src/security/capability.js";
+import { type Logger, type LogLevel } from "../../src/observability/logger.js";
+
+function capturing(): {
+  logger: Logger;
+  records: { level: LogLevel; event: string; fields?: Record<string, unknown> | undefined }[];
+} {
+  const records: {
+    level: LogLevel;
+    event: string;
+    fields?: Record<string, unknown> | undefined;
+  }[] = [];
+  return {
+    logger: { log: (level, event, fields) => void records.push({ level, event, fields }) },
+    records,
+  };
+}
 
 const echoTool: ToolDefinition<{ msg: string }, { echoed: string }> = {
   name: "echo",
@@ -116,5 +132,48 @@ describe("ToolRegistry", () => {
     const res = await reg.invoke({ id: "c8", tool: "trap", args: { x: "y" } }, grant, ctx);
     expect(res.ok).toBe(false);
     expect(res.error).toMatch(/parse-trap/);
+  });
+
+  it("logs a warn event when a capability is denied", async () => {
+    const { logger, records } = capturing();
+    const reg = new ToolRegistry(logger);
+    reg.register(echoTool);
+    const noGrant: AgentGrant = { agentId: "probe-agent", capabilities: [] };
+    await reg.invoke({ id: "c9", tool: "echo", args: { msg: "hi" } }, noGrant, ctx);
+    expect(records).toContainEqual(
+      expect.objectContaining({ level: "warn", event: "capability_denied" }),
+    );
+  });
+
+  it("logs an error event when a tool handler throws", async () => {
+    const { logger, records } = capturing();
+    const reg = new ToolRegistry(logger);
+    const boomTool: ToolDefinition<Record<string, never>, { ok: boolean }> = {
+      name: "boom",
+      description: "always throws",
+      args: z.object({}),
+      result: z.object({ ok: z.boolean() }),
+      capabilities: [{ name: "host:info" }],
+      handler: async () => {
+        throw new Error("kaboom");
+      },
+    };
+    reg.register(boomTool);
+    await reg.invoke({ id: "c10", tool: "boom", args: {} }, grant, ctx);
+    expect(records).toContainEqual(
+      expect.objectContaining({ level: "error", event: "tool_threw" }),
+    );
+  });
+
+  it("logs an error event on a confused-deputy agent mismatch", async () => {
+    const { logger, records } = capturing();
+    const reg = new ToolRegistry(logger);
+    reg.register(echoTool);
+    await reg.invoke({ id: "c11", tool: "echo", args: { msg: "hi" } }, grant, {
+      agentId: "someone-else",
+    });
+    expect(records).toContainEqual(
+      expect.objectContaining({ level: "error", event: "agent_mismatch" }),
+    );
   });
 });

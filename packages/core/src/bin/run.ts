@@ -6,6 +6,7 @@ import { weakHostFactsModel } from "../eval/scenarios.js";
 import { buildAgentRun } from "../playbook/build-agent-run.js";
 import { HumanOperator, ScriptedOperator } from "../playbook/operators.js";
 import { ValidateGate } from "../playbook/gates.js";
+import { JsonLogger } from "../observability/logger.js";
 import type { Operator } from "../playbook/agent-run.js";
 
 /**
@@ -72,6 +73,9 @@ async function main(): Promise<void> {
     // Demo Validate: a real ValidateGate over a trivially-true predicate — exercises the
     // gate plumbing end-to-end without recursively running the repo's own gate.
     validateGate: new ValidateGate(async () => ({ ok: true })),
+    // Observability on for the runnable entrypoint: structured swallow-point diagnostics
+    // go to stderr (the JSON trace stays on stdout), so logs never corrupt the result.
+    logger: new JsonLogger(),
   });
 
   const result = await built.run.run();

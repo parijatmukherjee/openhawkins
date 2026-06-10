@@ -8,6 +8,7 @@ import { RedactingEventStore } from "../session/redacting-store.js";
 import { InMemoryAuditLog, type AuditLog } from "../security/audit.js";
 import { type Clock, systemClock } from "../util/clock.js";
 import type { AgentGrant } from "../security/capability.js";
+import { type Logger, noopLogger } from "../observability/logger.js";
 import { DEFAULT_MANIFEST, type Phase } from "./manifest.js";
 import { SoftGate, ValidateGate, type PhaseGate } from "./gates.js";
 import { gateCommandPredicate, DEFAULT_GATE_COMMANDS } from "./gate-command.js";
@@ -27,6 +28,9 @@ export interface BuildAgentRunOpts {
   store?: EventStore;
   audit?: AuditLog;
   clock?: Clock;
+  /** Structured logger for swallow-point diagnostics; defaults to a no-op (silent). The
+   *  CLIs inject a JsonLogger to turn observability on. */
+  logger?: Logger;
 }
 
 export interface BuiltAgentRun {
@@ -44,6 +48,7 @@ export interface BuiltAgentRun {
  */
 export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgentRun> {
   const clock = opts.clock ?? systemClock;
+  const logger = opts.logger ?? noopLogger;
   const baseStore = opts.store ?? new InMemoryEventStore();
   const store = new RedactingEventStore(baseStore);
   const audit = opts.audit ?? new InMemoryAuditLog();
@@ -57,7 +62,7 @@ export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgent
     capabilities: [{ name: "host:info" }, { name: "playbook:override" }],
   };
 
-  const registry = new ToolRegistry();
+  const registry = new ToolRegistry(logger);
   registry.register(diskFreeTool);
   const agent = await Agent.start({
     agentId,
@@ -81,7 +86,7 @@ export async function buildAgentRun(opts: BuildAgentRunOpts): Promise<BuiltAgent
   }
 
   const validateGate =
-    opts.validateGate ?? new ValidateGate(gateCommandPredicate(DEFAULT_GATE_COMMANDS));
+    opts.validateGate ?? new ValidateGate(gateCommandPredicate(DEFAULT_GATE_COMMANDS), logger);
   const playbook = await PlaybookRun.start({
     manifest: DEFAULT_MANIFEST,
     sessionId,

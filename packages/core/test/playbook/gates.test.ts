@@ -6,6 +6,7 @@ import {
   type GateContext,
   type ValidatePredicate,
 } from "../../src/playbook/gates.js";
+import { type Logger, type LogLevel } from "../../src/observability/logger.js";
 
 describe("SoftGate", () => {
   it("always returns needs-operator, naming the phase", async () => {
@@ -53,5 +54,16 @@ describe("ValidateGate", () => {
       throw "weird";
     });
     expect(await gate.evaluate(ctx)).toEqual({ status: "failed", reason: "weird" });
+  });
+
+  it("logs a warn event when the validate predicate throws", async () => {
+    const records: { level: LogLevel; event: string }[] = [];
+    const logger: Logger = { log: (level, event) => void records.push({ level, event }) };
+    const gate = new ValidateGate(async () => {
+      throw new Error("predicate boom");
+    }, logger);
+    const verdict = await gate.evaluate();
+    expect(verdict).toEqual({ status: "failed", reason: "predicate boom" }); // behavior unchanged
+    expect(records).toContainEqual({ level: "warn", event: "gate_predicate_threw" });
   });
 });
