@@ -48,4 +48,10 @@ describe("xmlConverter", () => {
     const { markdown } = await xmlConverter.convert(deep);
     expect(markdown).toContain("[truncated: max nesting depth");
   });
+
+  it("degrades to a fenced block when the parser rejects excessive nesting", async () => {
+    const tooDeep = "<a>".repeat(1200) + "x" + "</a>".repeat(1200);
+    const { markdown } = await xmlConverter.convert(tooDeep);
+    expect(markdown.startsWith("```\n<a><a>")).toBe(true);
+  });
 });
