@@ -76,4 +76,19 @@ describe("SqliteEventStore (VINES)", () => {
       reopened.close();
     }
   });
+
+  it("throws a clear error when payload is malformed JSON", async () => {
+    const store = SqliteEventStore.open(":memory:");
+    // Directly inject bad JSON via the internal db handle
+    const db = (store as unknown as { db: { prepare: (sql: string) => { run: (...args: unknown[]) => void } } }).db;
+    db.prepare("INSERT INTO events (session_id, type, payload, at) VALUES (?, ?, ?, ?)").run(
+      "bad-session",
+      "SessionStarted",
+      "not-json",
+      1,
+    );
+
+    await expect(store.read("bad-session")).rejects.toThrow(/non-JSON/);
+    store.close();
+  });
 });

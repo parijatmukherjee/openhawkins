@@ -1,4 +1,5 @@
 import type { EventStore, DomainEvent } from "@openhawkins/core";
+import { parseJsonOrThrow } from "@openhawkins/core";
 import { type SqlDriver, type SqlStatement, openDatabase } from "./driver/driver.js";
 import { migrate } from "./migrate.js";
 import { SCHEMA } from "./schema.js";
@@ -47,7 +48,7 @@ export class SqliteEventStore implements EventStore {
     }
     const stmt = this.db.prepare(sql);
     const rows = stmt.all(...params) as { payload: string }[];
-    return rows.map((r) => JSON.parse(r.payload) as DomainEvent);
+    return rows.map((r) => parseJsonOrThrow<DomainEvent>(r.payload, "SqliteEventStore", 200));
   }
 
   close(): void {
