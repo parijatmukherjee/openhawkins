@@ -1,12 +1,5 @@
 import { redact } from "../security/redact.js";
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  renameSync,
-  statSync,
-  unlinkSync,
-} from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, renameSync, statSync, unlinkSync } from "node:fs";
 import { dirname } from "node:path";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -47,7 +40,7 @@ export class JsonLogger implements Logger {
   private readonly min: LogLevel;
   private readonly sink: (line: string) => void;
   private readonly base: LogFields;
-  private readonly path?: string;
+  private readonly path: string | undefined;
   private readonly maxSizeBytes: number;
   private readonly maxFiles: number;
 

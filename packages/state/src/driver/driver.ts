@@ -29,6 +29,8 @@ export interface SqlDriver {
   /** Run `fn` in a BEGIN/COMMIT transaction (ROLLBACK on throw). Not re-entrant:
    *  calling transaction() inside another transaction() will fail at BEGIN. */
   transaction<T>(fn: () => T): T;
+  /** Rebuild the database file to reclaim free space (SQLite VACUUM). */
+  vacuum(): void;
   close(): void;
 }
 
@@ -79,6 +81,7 @@ export function openDatabase(opts: OpenOptions): SqlDriver {
         throw err;
       }
     },
+    vacuum: () => native.exec("VACUUM"),
     close: () => native.close(),
   };
 }
