@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { tmpdir } from "node:os";
-import { z } from "zod";
 import { runAgentTurn, acceptAlways } from "../../src/loop/agent-loop.js";
 import { ScriptedAdapter } from "../../src/models/scripted.js";
 import { ToolRegistry } from "../../src/tools/registry.js";

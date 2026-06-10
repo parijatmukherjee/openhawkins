@@ -29,3 +29,11 @@ export function requiresApproval(opts: {
 }): boolean {
   return opts.sideEffecting && opts.influencedBy.some((p) => p.taint);
 }
+
+/** Thrown when a side-effecting tool is gated by the taint rule. */
+export class TaintError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TaintError";
+  }
+}

@@ -6,6 +6,7 @@ import { checkHealth } from "../src/health.js";
 import { openDatabase } from "../src/driver/driver.js";
 import { SqliteAuditLog } from "../src/audit-store.js";
 import { resolveAuditKey, FileVault } from "@openhawkins/core";
+import type { Logger } from "@openhawkins/core";
 
 describe("checkHealth", () => {
   it("reports healthy on a clean empty db+vault", async () => {
@@ -48,6 +49,33 @@ describe("checkHealth", () => {
       passphrase: "wrong",
     });
     expect(result.vaultUnlocked).toBe(false);
+  });
+
+  it("logs root cause when vault check fails", async () => {
+    const logs: { level: string; event: string; reason: string }[] = [];
+    const logger: Logger = {
+      log(level, event, fields) {
+        logs.push({ level, event, reason: String(fields?.reason ?? "") });
+      },
+    };
+    const d = mkdtempSync(join(tmpdir(), "oh-health-"));
+    await checkHealth({
+      dbPath: join(d, "health.db"),
+      vaultPath: join(d, "vault.json"),
+      passphrase: "correct",
+    });
+    const result = await checkHealth(
+      {
+        dbPath: join(d, "health2.db"),
+        vaultPath: join(d, "vault.json"),
+        passphrase: "wrong",
+      },
+      logger,
+    );
+    expect(result.vaultUnlocked).toBe(false);
+    const warn = logs.find((l) => l.level === "warn" && l.event.startsWith("health_check_"));
+    expect(warn).toBeDefined();
+    expect(warn!.reason.length).toBeGreaterThan(0);
   });
 
   it("reports lastAuditVerified false when chain is tampered", async () => {
