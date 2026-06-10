@@ -1,6 +1,8 @@
 import type { ToolDefinition, ToolCall, ToolResult, ToolContext } from "./tool.js";
 import { type AgentGrant, grantSatisfies } from "../security/capability.js";
 import { type Logger, noopLogger } from "../observability/logger.js";
+import type { MetricsCollector } from "../observability/metrics.js";
+import { noopMetricsCollector } from "../observability/metrics.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyToolDefinition = ToolDefinition<any, any>;
@@ -9,7 +11,10 @@ type AnyToolDefinition = ToolDefinition<any, any>;
 export class ToolRegistry {
   private readonly tools = new Map<string, AnyToolDefinition>();
 
-  constructor(private readonly logger: Logger = noopLogger) {}
+  constructor(
+    private readonly logger: Logger = noopLogger,
+    private readonly metrics: MetricsCollector = noopMetricsCollector,
+  ) {}
 
   // Generic public signature so callers get full type-checking on the tool they
   // pass; the single internal cast erases the type variables for heterogeneous
@@ -64,7 +69,13 @@ export class ToolRegistry {
       if (!parsedArgs.success) {
         return fail(call, `invalid args: ${parsedArgs.error.message}`);
       }
-      const raw = await tool.handler(parsedArgs.data, ctx);
+      const start = Date.now();
+      let raw: unknown;
+      try {
+        raw = await tool.handler(parsedArgs.data, ctx);
+      } finally {
+        this.metrics.histogram("ToolCallLatency", Date.now() - start);
+      }
       const parsedResult = tool.result.safeParse(raw);
       if (!parsedResult.success) {
         return fail(call, `invalid result: ${parsedResult.error.message}`);

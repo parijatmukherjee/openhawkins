@@ -4,6 +4,7 @@ import { ToolRegistry } from "../../src/tools/registry.js";
 import type { ToolDefinition } from "../../src/tools/tool.js";
 import type { AgentGrant } from "../../src/security/capability.js";
 import { type Logger, type LogLevel } from "../../src/observability/logger.js";
+import type { MetricsCollector } from "../../src/observability/metrics.js";
 
 function capturing(): {
   logger: Logger;
@@ -175,5 +176,43 @@ describe("ToolRegistry", () => {
     expect(records).toContainEqual(
       expect.objectContaining({ level: "error", event: "agent_mismatch" }),
     );
+  });
+
+  it("records ToolCallLatency histogram for a successful invocation", async () => {
+    const histograms: { name: string; value: number }[] = [];
+    const metrics: MetricsCollector = {
+      increment() {},
+      histogram: (name, value) => void histograms.push({ name, value }),
+    };
+    const reg = new ToolRegistry(undefined, metrics);
+    reg.register(echoTool);
+    await reg.invoke({ id: "c12", tool: "echo", args: { msg: "hi" } }, grant, ctx);
+    expect(histograms).toHaveLength(1);
+    expect(histograms[0].name).toBe("ToolCallLatency");
+    expect(histograms[0].value).toBeGreaterThanOrEqual(0);
+  });
+
+  it("records ToolCallLatency histogram even when the handler throws", async () => {
+    const histograms: { name: string; value: number }[] = [];
+    const metrics: MetricsCollector = {
+      increment() {},
+      histogram: (name, value) => void histograms.push({ name, value }),
+    };
+    const reg = new ToolRegistry(undefined, metrics);
+    const boomTool: ToolDefinition<Record<string, never>, { ok: boolean }> = {
+      name: "boom",
+      description: "always throws",
+      args: z.object({}),
+      result: z.object({ ok: z.boolean() }),
+      capabilities: [{ name: "host:info" }],
+      handler: async () => {
+        throw new Error("kaboom");
+      },
+    };
+    reg.register(boomTool);
+    await reg.invoke({ id: "c13", tool: "boom", args: {} }, grant, ctx);
+    expect(histograms).toHaveLength(1);
+    expect(histograms[0].name).toBe("ToolCallLatency");
+    expect(histograms[0].value).toBeGreaterThanOrEqual(0);
   });
 });
