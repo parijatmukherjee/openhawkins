@@ -27,6 +27,8 @@ export default defineConfig({
         "packages/*/src/types.ts",
         "packages/*/src/observability/index.ts",
         "packages/*/src/memory.ts",
+        "packages/*/src/index.ts",
+        "packages/*/src/sync-message.ts",
       ],
       reporter: ["text", "html", "lcov", "json-summary"],
       // The merge gate: coverage MUST stay above these floors (enforced locally,

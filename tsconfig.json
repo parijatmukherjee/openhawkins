@@ -8,8 +8,6 @@
     { "path": "packages/memory" },
     { "path": "packages/memory/tsconfig.test.json" },
     { "path": "packages/markdownify" },
-    { "path": "packages/markdownify/tsconfig.test.json" },
-    { "path": "packages/sync" },
-    { "path": "packages/sync/tsconfig.test.json" }
+    { "path": "packages/markdownify/tsconfig.test.json" }
   ]
 }
