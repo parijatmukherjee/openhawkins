@@ -59,9 +59,7 @@ export async function checkHealth(opts: HealthOpts): Promise<HealthCheck> {
       try {
         const store = new SqliteEventStore(db);
         const allEvents = await store.read("probe-agent-session");
-        const turns = allEvents.filter(
-          (e) => e.type === "TurnStarted" || e.type === "TurnFailed",
-        );
+        const turns = allEvents.filter((e) => e.type === "TurnStarted" || e.type === "TurnFailed");
         const recent = turns.filter((e) => now - e.at <= lookback);
         const failures = recent.filter((e) => e.type === "TurnFailed").length;
         const total = recent.filter((e) => e.type === "TurnStarted").length;

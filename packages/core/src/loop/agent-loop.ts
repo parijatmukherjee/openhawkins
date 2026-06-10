@@ -44,7 +44,10 @@ export interface AgentLoopConfig {
 export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise<TurnRecord> {
   const policy = cfg.policy ?? acceptAlways;
   const maxModelCalls = cfg.maxModelCalls ?? 6;
-  const ctx: ToolContext = { agentId: cfg.grant.agentId, ...(cfg.traceId ? { traceId: cfg.traceId } : {}) };
+  const ctx: ToolContext = {
+    agentId: cfg.grant.agentId,
+    ...(cfg.traceId ? { traceId: cfg.traceId } : {}),
+  };
 
   const toolSchemas: ToolSchema[] = cfg.tools.map((t) => ({
     name: t.name,

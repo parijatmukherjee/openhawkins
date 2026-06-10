@@ -8,7 +8,8 @@ function capturingLogger(): {
   logger: Logger;
   records: { level: string; event: string; fields?: Record<string, unknown> | undefined }[];
 } {
-  const records: { level: string; event: string; fields?: Record<string, unknown> | undefined }[] = [];
+  const records: { level: string; event: string; fields?: Record<string, unknown> | undefined }[] =
+    [];
   return {
     logger: { log: (level, event, fields) => void records.push({ level, event, fields }) },
     records,

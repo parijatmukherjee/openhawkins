@@ -10,10 +10,7 @@ describe("createDocumentTool", () => {
       }),
     };
     const tool = createDocumentTool(converter);
-    const result = await tool.handler(
-      { data: "hello", mime: "", filename: "" },
-      { agentId: "a" },
-    );
+    const result = await tool.handler({ data: "hello", mime: "", filename: "" }, { agentId: "a" });
     expect(result.markdown).toBe("# hello");
     expect(result.format).toBe("html");
     expect(result.warnings).toEqual([]);

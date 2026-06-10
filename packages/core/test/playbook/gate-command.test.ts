@@ -19,7 +19,9 @@ describe("runCommand", () => {
   });
 
   it("kills a hung process after timeoutMs and reports failure", async () => {
-    const result = await runCommand(SELF, ["-e", "setInterval(() => {}, 1000);"], { timeoutMs: 100 });
+    const result = await runCommand(SELF, ["-e", "setInterval(() => {}, 1000);"], {
+      timeoutMs: 100,
+    });
     expect(result.ok).toBe(false);
     expect(result.detail).toContain("timed out");
   });

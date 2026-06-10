@@ -183,10 +183,7 @@ describe("runAgentTurn (native tool-calling round-trip)", () => {
     });
 
     const traceId = "trace-tool-ctx";
-    await runAgentTurn(
-      { adapter, registry, grant, tools: [diskFreeTool], traceId },
-      "disk?",
-    );
+    await runAgentTurn({ adapter, registry, grant, tools: [diskFreeTool], traceId }, "disk?");
 
     expect((capturedCtx as { traceId?: string }).traceId).toBe(traceId);
   });

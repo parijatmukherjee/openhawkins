@@ -41,6 +41,7 @@
 ### Task 1: Add LIMIT + cursor to EventStore.read() (OOM fix)
 
 **Files:**
+
 - Modify: `packages/core/src/session/events.ts`
 - Modify: `packages/state/src/event-store.ts`
 - Modify: `packages/core/src/session/replay.ts`
@@ -53,7 +54,13 @@
 it("reads events in paginated chunks", async () => {
   const store = new InMemoryEventStore();
   for (let i = 0; i < 5; i++) {
-    await store.append({ type: "TurnStarted", sessionId: "s1", turnId: `t${i}`, input: "x", at: i });
+    await store.append({
+      type: "TurnStarted",
+      sessionId: "s1",
+      turnId: `t${i}`,
+      input: "x",
+      at: i,
+    });
   }
   const chunk1 = await store.read("s1", { limit: 2 });
   expect(chunk1).toHaveLength(2);
@@ -69,6 +76,7 @@ it("reads events in paginated chunks", async () => {
 - [ ] **Step 3: Add pagination to EventStore interface + implementations**
 
 Change `EventStore.read` signature:
+
 ```ts
 read(sessionId: string, opts?: { limit?: number; afterSeq?: number }): Promise<DomainEvent[]>;
 ```
@@ -101,6 +109,7 @@ export async function rebuildState(store: EventStore, sessionId: string): Promis
 ### Task 2: Enforce capability scope (deny-by-default)
 
 **Files:**
+
 - Modify: `packages/core/src/security/capability.ts`
 - Test: `packages/core/test/security/capability.test.ts`
 
@@ -139,6 +148,7 @@ export function grantSatisfies(grant: AgentGrant, required: Capability): boolean
 ### Task 3: Wire adapter keys through Vault in CLI
 
 **Files:**
+
 - Modify: `packages/core/src/bin/ask.ts`
 - Modify: `packages/state/src/bin/openhawkins-run.ts`
 - Test: `packages/core/test/bin/ask.test.ts` (new)
@@ -151,7 +161,8 @@ import { FileVault } from "../security/vault.js";
 async function buildAdapter(kind: string, path: string, vault?: FileVault): Promise<ModelAdapter> {
   // ...existing cases, but read from vault if available
   if (kind === "ollama" && vault) {
-    const model = (await vault.get("ollama-model")) ?? process.env.OPENHAWKINS_OLLAMA_MODEL ?? "llama3.1";
+    const model =
+      (await vault.get("ollama-model")) ?? process.env.OPENHAWKINS_OLLAMA_MODEL ?? "llama3.1";
     // ...
   }
 }
@@ -166,6 +177,7 @@ async function buildAdapter(kind: string, path: string, vault?: FileVault): Prom
 ### Task 4: Wire markdownify into agent path
 
 **Files:**
+
 - Modify: `packages/core/src/eval/agent.ts`
 - Modify: `packages/core/src/eval/scenarios.ts`
 - Modify: `packages/core/src/loop/agent-loop.ts`
@@ -177,11 +189,18 @@ async function buildAdapter(kind: string, path: string, vault?: FileVault): Prom
 ```ts
 import { ConverterRegistry } from "@openhawkins/markdownify";
 
-export const documentTool: ToolDefinition<{ data: string; mime?: string; filename?: string }, { markdown: string; format: string }> = {
+export const documentTool: ToolDefinition<
+  { data: string; mime?: string; filename?: string },
+  { markdown: string; format: string }
+> = {
   name: "convert_document",
   description: "Convert a document (CSV, HTML, JSON, XML, text) to Markdown for token reduction.",
   capabilities: [{ name: "document:convert" }],
-  args: z.object({ data: z.string(), mime: z.string().optional(), filename: z.string().optional() }),
+  args: z.object({
+    data: z.string(),
+    mime: z.string().optional(),
+    filename: z.string().optional(),
+  }),
   handler: async (args) => {
     const reg = new ConverterRegistry();
     const result = await reg.convert({ data: args.data, mime: args.mime, filename: args.filename });
@@ -199,6 +218,7 @@ export const documentTool: ToolDefinition<{ data: string; mime?: string; filenam
 ### Task 5: Wire memory (VECNA) into agent path
 
 **Files:**
+
 - Modify: `packages/core/src/eval/agent.ts`
 - Modify: `packages/core/src/eval/scenarios.ts`
 - Modify: `packages/core/src/loop/agent-loop.ts`
@@ -235,6 +255,7 @@ if (cfg.memory) {
 ### Task 6: Bound runCommand/gate-spawn execution time
 
 **Files:**
+
 - Modify: `packages/core/src/os/platform.ts`
 - Modify: `packages/core/src/playbook/gate-command.ts`
 - Test: `packages/core/test/os/platform.test.ts`
@@ -242,7 +263,11 @@ if (cfg.memory) {
 - [ ] **Step 1: Add timeout to runCommand**
 
 ```ts
-export async function runCommand(cmd: string, args: string[], opts?: { timeoutMs?: number }): Promise<{ stdout: string; stderr: string }> {
+export async function runCommand(
+  cmd: string,
+  args: string[],
+  opts?: { timeoutMs?: number },
+): Promise<{ stdout: string; stderr: string }> {
   // Use AbortController or child_process.kill on deadline
 }
 ```
@@ -256,6 +281,7 @@ export async function runCommand(cmd: string, args: string[], opts?: { timeoutMs
 ### Task 7: Instrument markdownify + probe agent with logger
 
 **Files:**
+
 - Modify: `packages/markdownify/src/registry.ts`
 - Modify: `packages/core/src/eval/scenarios.ts`
 - Modify: `packages/core/src/eval/agent.ts`
@@ -274,6 +300,7 @@ export async function runCommand(cmd: string, args: string[], opts?: { timeoutMs
 ### Task 8: Stress-test real adapter failures
 
 **Files:**
+
 - Create: `packages/core/test/models/adapter-stress.test.ts`
 - Modify: `packages/core/src/models/http.ts` (if needed)
 
@@ -293,6 +320,7 @@ it("handles 502 Bad Gateway", async () => { ... });
 ### Task 9: Add health/readiness probe
 
 **Files:**
+
 - Modify: `packages/state/src/bin/openhawkins-run.ts`
 - Create: `packages/state/src/health.ts`
 - Test: `packages/state/test/health.test.ts`
@@ -316,6 +344,7 @@ if (args.includes("--health")) {
 ### Task 10: Add correlation IDs to logs
 
 **Files:**
+
 - Modify: `packages/core/src/observability/logger.ts`
 - Modify: `packages/core/src/eval/agent.ts`
 - Modify: `packages/core/src/loop/agent-loop.ts`
@@ -340,6 +369,7 @@ export interface Logger {
 ### Task 11: Add metrics/telemetry
 
 **Files:**
+
 - Create: `packages/core/src/observability/metrics.ts`
 - Modify: `packages/core/src/loop/agent-loop.ts`
 - Modify: `packages/core/src/eval/agent.ts`
@@ -364,6 +394,7 @@ export interface Metrics {
 ### Task 12: External audit anchoring (A2b)
 
 **Files:**
+
 - Create: `packages/core/src/security/anchor.ts`
 - Test: `packages/core/test/security/anchor.test.ts`
 
@@ -384,6 +415,7 @@ export interface AuditAnchor {
 ### Task 13: Audit verify diagnostics + key rotation (A2c)
 
 **Files:**
+
 - Modify: `packages/core/src/security/audit.ts`
 - Modify: `packages/state/src/audit-store.ts`
 - Test: `packages/core/test/security/audit.test.ts`
@@ -409,6 +441,7 @@ export interface VerifyResult {
 ### Task 14: Backup/restore docs, log rotation, service defs, Windows CI, VACUUM, fuzz tests, rollback, backpressure, barrel export
 
 **Files:**
+
 - Create: `docs/ops/backup-restore.md`
 - Create: `docs/ops/systemd.service`
 - Create: `.github/workflows/ci.yml` (or verify existing)
@@ -441,12 +474,12 @@ docker build -f Dockerfile.test -t openhawkins-test . && docker run --rm openhaw
 
 ## Summary
 
-| Phase | Tasks | Status |
-|-------|-------|--------|
-| P0 | 5 critical runtime gaps | 🔴 OPEN |
-| P1 | 5 boundary hardening | 🔴 OPEN |
-| P2 | 4 observability/scale | 🔴 OPEN |
-| P3 | 10 operational polish | 🔴 OPEN |
-| **Total** | **24** | **0/24** |
+| Phase     | Tasks                   | Status   |
+| --------- | ----------------------- | -------- |
+| P0        | 5 critical runtime gaps | 🔴 OPEN  |
+| P1        | 5 boundary hardening    | 🔴 OPEN  |
+| P2        | 4 observability/scale   | 🔴 OPEN  |
+| P3        | 10 operational polish   | 🔴 OPEN  |
+| **Total** | **24**                  | **0/24** |
 
 **Target: 24/24 ✅ (ZERO flaws, ZERO bugs)**

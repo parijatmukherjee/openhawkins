@@ -13,6 +13,7 @@
 ### Task 1.1: `checkHealth` logic + tests (TDD)
 
 **Files:**
+
 - Create: `packages/state/src/health.ts`
 - Create: `packages/state/test/health.test.ts`
 
@@ -23,6 +24,7 @@
 ### Task 1.2: Wire `--health` into `openhawkins-run` CLI
 
 **Files:**
+
 - Modify: `packages/state/src/bin/openhawkins-run.ts`
 
 - [ ] **Step 4: Add `--health` flag handling**
@@ -34,6 +36,7 @@
 ### Task 2.1: Add `traceId` to `Logger`
 
 **Files:**
+
 - Modify: `packages/core/src/observability/logger.ts`
 - Modify: `packages/core/test/observability/logger.test.ts`
 
@@ -43,6 +46,7 @@
 ### Task 2.2: Propagate `traceId` through agent loop
 
 **Files:**
+
 - Modify: `packages/core/src/eval/agent.ts`
 - Modify: `packages/core/src/loop/agent-loop.ts`
 - Modify: `packages/core/src/loop/turn.ts`

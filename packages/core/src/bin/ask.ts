@@ -74,11 +74,7 @@ async function loadOpt(
   return v || undefined;
 }
 
-async function buildAdapter(
-  kind: string,
-  path: string,
-  vault?: FileVault,
-): Promise<ModelAdapter> {
+async function buildAdapter(kind: string, path: string, vault?: FileVault): Promise<ModelAdapter> {
   switch (kind) {
     case "scripted":
       return weakHostFactsModel(path);
@@ -86,7 +82,11 @@ async function buildAdapter(
       const model = await loadStr(vault, "ollama-model", "OPENHAWKINS_OLLAMA_MODEL", "llama3.1");
       const baseUrl = await loadOpt(vault, "ollama-url", "OPENHAWKINS_OLLAMA_URL");
       const apiKey = await loadOpt(vault, "ollama-key", "OPENHAWKINS_OLLAMA_KEY");
-      return new OllamaAdapter({ model, ...(baseUrl ? { baseUrl } : {}), ...(apiKey ? { apiKey } : {}) });
+      return new OllamaAdapter({
+        model,
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(apiKey ? { apiKey } : {}),
+      });
     }
     case "openai": {
       const model = await loadStr(vault, "openai-model", "OPENHAWKINS_OPENAI_MODEL", "gpt-4o-mini");

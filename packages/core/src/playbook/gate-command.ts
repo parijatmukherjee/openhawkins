@@ -22,7 +22,11 @@ export interface RunCommandOptions {
  * exit, or `{ ok: false, detail }` on a non-zero exit or a spawn error (e.g. the binary
  * is missing). Never rejects — failures are returned as data, not thrown.
  */
-export function runCommand(cmd: string, args: string[], options: RunCommandOptions = {}): Promise<GateCheck> {
+export function runCommand(
+  cmd: string,
+  args: string[],
+  options: RunCommandOptions = {},
+): Promise<GateCheck> {
   return new Promise((resolve) => {
     // Both `error` (spawn failure) and `close` can fire for one child, so `resolve` may
     // be called twice — harmless, since a settled Promise ignores later resolutions. We

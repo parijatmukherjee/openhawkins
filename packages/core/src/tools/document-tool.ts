@@ -5,10 +5,16 @@ import type { ToolDefinition } from "./tool.js";
  *  `core` does not depend on `@openhawkins/markdownify`; the composition root
  *  (e.g. `buildDurableAgentRun`) injects a concrete converter. */
 export interface DocumentConverter {
-  convert(data: string, mime: string, filename: string): Promise<{ markdown: string; format: string }>;
+  convert(
+    data: string,
+    mime: string,
+    filename: string,
+  ): Promise<{ markdown: string; format: string }>;
 }
 
-export function createDocumentTool(converter: DocumentConverter): ToolDefinition<
+export function createDocumentTool(
+  converter: DocumentConverter,
+): ToolDefinition<
   { data: string; mime: string; filename: string },
   { markdown: string; format: string; warnings: string[] }
 > {
@@ -20,7 +26,9 @@ export function createDocumentTool(converter: DocumentConverter): ToolDefinition
     capabilities: [{ name: "document:convert" }],
     args: z.object({
       data: z.string().min(1).describe("The raw document content"),
-      mime: z.string().describe("MIME type (e.g. text/csv, text/html) — empty string for auto-detect"),
+      mime: z
+        .string()
+        .describe("MIME type (e.g. text/csv, text/html) — empty string for auto-detect"),
       filename: z.string().describe("Filename with extension — empty string for auto-detect"),
     }),
     result: z.object({
@@ -29,11 +37,7 @@ export function createDocumentTool(converter: DocumentConverter): ToolDefinition
       warnings: z.array(z.string()),
     }),
     handler: async (args) => {
-      const result = await converter.convert(
-        args.data,
-        args.mime || "",
-        args.filename || "",
-      );
+      const result = await converter.convert(args.data, args.mime || "", args.filename || "");
       return { markdown: result.markdown, format: result.format, warnings: [] };
     },
   };
