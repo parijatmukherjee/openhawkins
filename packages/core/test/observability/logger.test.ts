@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { JsonLogger, noopLogger, type LogLevel } from "../../src/observability/logger.js";
 import { REDACTED } from "../../src/security/redact.js";
 
@@ -80,6 +83,50 @@ describe("JsonLogger", () => {
       n: 1,
       traceId: "trace-abc-123",
     });
+  });
+
+  it("rotates log file when maxSizeBytes is exceeded", () => {
+    const dir = mkdtempSync(join(tmpdir(), "log-rotate-"));
+    try {
+      const path = join(dir, "app.log");
+      const log = new JsonLogger({ path, maxSizeBytes: 1 });
+      log.log("info", "first");
+      log.log("info", "second");
+      const files = readdirSync(dir).sort();
+      expect(files).toContain("app.log");
+      expect(files).toContain("app.log.1");
+      const current = readFileSync(join(dir, "app.log"), "utf8");
+      expect(JSON.parse(current).event).toBe("second");
+      const rotated = readFileSync(join(dir, "app.log.1"), "utf8");
+      expect(JSON.parse(rotated).event).toBe("first");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps only maxFiles rotated files", () => {
+    const dir = mkdtempSync(join(tmpdir(), "log-rotate-"));
+    try {
+      const path = join(dir, "app.log");
+      const log = new JsonLogger({ path, maxSizeBytes: 1, maxFiles: 2 });
+      log.log("info", "a");
+      log.log("info", "b");
+      log.log("info", "c");
+      log.log("info", "d");
+      const files = readdirSync(dir).sort();
+      expect(files).toEqual(["app.log", "app.log.1", "app.log.2"]);
+      const oldest = readFileSync(join(dir, "app.log.2"), "utf8");
+      expect(JSON.parse(oldest).event).toBe("b");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("defaults to no rotation when path is omitted", () => {
+    const s = sink();
+    const log = new JsonLogger({ sink: s.write });
+    log.log("info", "hello");
+    expect(s.lines).toHaveLength(1);
   });
 
   it("omits traceId when not provided", () => {

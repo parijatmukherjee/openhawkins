@@ -1,4 +1,13 @@
 import { redact } from "../security/redact.js";
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  statSync,
+  unlinkSync,
+} from "node:fs";
+import { dirname } from "node:path";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogFields = Record<string, unknown>;
@@ -23,6 +32,12 @@ export interface JsonLoggerOptions {
   sink?: (line: string) => void;
   /** Fields merged into every record (e.g. a runId). */
   base?: LogFields;
+  /** Absolute path to log file. Enables rotation when maxSizeBytes is set. */
+  path?: string;
+  /** Max file size in bytes before rotation. */
+  maxSizeBytes?: number;
+  /** Max number of rotated files to keep (default 5). */
+  maxFiles?: number;
 }
 
 /** Emits one JSON object per event to a sink. Fields are run through `redact` so a secret
@@ -32,11 +47,52 @@ export class JsonLogger implements Logger {
   private readonly min: LogLevel;
   private readonly sink: (line: string) => void;
   private readonly base: LogFields;
+  private readonly path?: string;
+  private readonly maxSizeBytes: number;
+  private readonly maxFiles: number;
 
   constructor(opts: JsonLoggerOptions = {}) {
     this.min = opts.min ?? "info";
-    this.sink = opts.sink ?? ((line) => void process.stderr.write(`${line}\n`));
     this.base = opts.base ?? {};
+    this.path = opts.path;
+    this.maxSizeBytes = opts.maxSizeBytes ?? Infinity;
+    this.maxFiles = opts.maxFiles ?? 5;
+
+    if (this.path) {
+      this.sink = (line) => this.writeToFile(line);
+    } else {
+      this.sink = opts.sink ?? ((line) => void process.stderr.write(`${line}\n`));
+    }
+  }
+
+  private writeToFile(line: string): void {
+    const data = `${line}\n`;
+    if (this.maxSizeBytes !== Infinity) {
+      const size = existsSync(this.path!) ? statSync(this.path!).size : 0;
+      if (size + Buffer.byteLength(data) > this.maxSizeBytes) {
+        this.rotate();
+      }
+    }
+    mkdirSync(dirname(this.path!), { recursive: true });
+    appendFileSync(this.path!, data);
+  }
+
+  private rotate(): void {
+    const base = this.path!;
+    const oldest = `${base}.${this.maxFiles}`;
+    if (existsSync(oldest)) {
+      unlinkSync(oldest);
+    }
+    for (let i = this.maxFiles - 1; i >= 1; i--) {
+      const from = `${base}.${i}`;
+      const to = `${base}.${i + 1}`;
+      if (existsSync(from)) {
+        renameSync(from, to);
+      }
+    }
+    if (existsSync(base)) {
+      renameSync(base, `${base}.1`);
+    }
   }
 
   log(level: LogLevel, event: string, fields?: LogFields, traceId?: string): void {
