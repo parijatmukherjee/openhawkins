@@ -1,0 +1,51 @@
+[Unit]
+Description=OpenHawkins — self-owned AI-agent runtime
+Documentation=https://github.com/openhawkins/openhawkins/blob/main/docs/ops/backup-restore.md
+After=network.target
+
+[Service]
+Type=simple
+User=openhawkins
+Group=openhawkins
+
+# Restart only on unclean exits; do not loop forever if the binary is missing.
+Restart=on-failure
+RestartSec=5
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Working directory and paths
+WorkingDirectory=/opt/openhawkins
+StateDirectory=openhawkins
+Environment="DB_PATH=/var/lib/openhawkins/openhawkins.db"
+Environment="VAULT_PATH=/var/lib/openhawkins/openhawkins-vault.json"
+Environment="OPENHAWKINS_VAULT_PASS=%V"
+
+# The passphrase is read from a systemd credential (systemd 247+).
+# LoadCredential=passphrase:/etc/openhawkins/vault-passphrase
+# If your systemd is older, replace %V with a hard-coded path and use
+#   EnvironmentFile=-/etc/openhawkins/environment
+# with tight permissions (0600, root:openhawkins).
+
+ExecStartPre=-/usr/bin/test -d /var/lib/openhawkins
+ExecStartPre=-/usr/bin/chmod 600 %V
+ExecStartPre=-/usr/bin/chown openhawkins:openhawkins %V
+
+ExecStart=/usr/bin/node /opt/openhawkins/packages/state/dist/bin/openhawkins-run.js \
+  --db ${DB_PATH} \
+  --vault ${VAULT_PATH} \
+  --passphrase ${OPENHAWKINS_VAULT_PASS} \
+  --json
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/openhawkins
+UMask=0077
+
+# Ensure the vault file is created with 0600 and the DB with 0640.
+# (The vault is encrypted, but defense-in-depth means filesystem permissions too.)
+
+[Install]
+WantedBy=multi-user.target
