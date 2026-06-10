@@ -27,8 +27,9 @@ state, capabilities). Full vision: [`docs/specs/2026-06-05-openjarvis-design.md`
 | `@openjarvis/state`       | 🟢     | **JarvisStateStore**: durable SQLite (`SqlDriver` + migrations + event store + keyed audit store) and the durable composition root (`buildDurableAgentRun` + `openjarvis-run` CLI).                                    |
 | `@openjarvis/memory`      | 🟢     | **JarvisMemoryStore**: decay-aware memory (fragments, recall, pure-JS embeddings + FTS5 fallback). **Wired into the agent path** via `buildAgentRun`/`buildDurableAgentRun`/`buildProbeAgent`.                         |
 | `@openjarvis/markdownify` | 🟢     | Document → Markdown converters (CSV/HTML/JSON/XML/text) behind a never-throws `ConverterRegistry`. **Wired into the agent path** via `createDocumentTool` + `buildDurableAgentRun`/`buildProbeAgent`.                  |
-| `@openjarvis/jarvis`      | 🟢     | Vision skill interfaces (engine, detection, events, presence, mock, visual-resolver) + E2E automation suite (`MockUser`, 15 scenarios).                                                                                |
+| `@openjarvis/jarvis`      | 🟢     | Vision skill interfaces + E2E automation suite (`MockUser`, 15 scenarios). **S3 Nexus Orchestrator** (IntentRouter, AgentPool, Synthesizer, NexusEngine, TaskBoard, ReplayEngine) with 28 tests.                       |
 | `@openjarvis/agents`      | 🟢     | Built-in agents package with `VisionAgent`/`MockVisionAgent` (agent delegator, pool interfaces).                                                                                                                       |
+| `@openjarvis/desktop`     | 🟢     | Electron desktop app with Iron Man neon dashboard: frameless window, glassmorphism, voice waveform, agent radar, task board, onboarding flow (5 steps), settings panel, system tray, global shortcut.                  |
 
 Planned-but-not-started packages (orchestrator/Nexus, agents, channels, dashboard,
 tickets/Board, gateway, plugin-sdk, registry, cli) are described in [`README.md`](README.md).
@@ -66,7 +67,7 @@ integration); `ask`/`run` CLIs + eval harness. Specs: `docs/specs/2026-06-05-S1-
 
 ## 4. In flight
 
-**(nothing)** — all planned work is done.
+**(nothing)** — all specced work is done. Items below need new design specs before implementation.
 
 ## 5. What's next
 

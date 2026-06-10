@@ -1,3 +1,5 @@
+import { getVersion } from "./version.js";
+
 export function getAppVersion(): string {
-  return "0.0.0";
+  return getVersion();
 }
