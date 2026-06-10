@@ -12,5 +12,8 @@
   },
   "scripts": {
     "build": "tsc -b"
+  },
+  "dependencies": {
+    "@openhawkins/jarvis": "*"
   }
 }

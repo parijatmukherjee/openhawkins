@@ -12,6 +12,8 @@
     { "path": "packages/desktop" },
     { "path": "packages/desktop/tsconfig.test.json" },
     { "path": "packages/jarvis" },
-    { "path": "packages/jarvis/tsconfig.test.json" }
+    { "path": "packages/jarvis/tsconfig.test.json" },
+    { "path": "packages/agents" },
+    { "path": "packages/agents/tsconfig.test.json" }
   ]
 }
