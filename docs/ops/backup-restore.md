@@ -9,10 +9,10 @@
 
 Two files contain all durable state:
 
-| File | Purpose | Notes |
-|------|---------|-------|
-| `openhawkins.db` | SQLite event store + audit log | WAL mode enabled; sibling `-wal` and `-shm` files appear at runtime |
-| `openhawkins-vault.json` | Encrypted Vault (AES-256-GCM) | Holds the audit HMAC key and any adapter secrets; **never** back up without the passphrase |
+| File                     | Purpose                        | Notes                                                                                      |
+| ------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------ |
+| `openhawkins.db`         | SQLite event store + audit log | WAL mode enabled; sibling `-wal` and `-shm` files appear at runtime                        |
+| `openhawkins-vault.json` | Encrypted Vault (AES-256-GCM)  | Holds the audit HMAC key and any adapter secrets; **never** back up without the passphrase |
 
 > **Important:** The SQLite database uses WAL (`journal_mode = WAL`). You must include
 > the `-wal` and `-shm` files if you copy while the process is running, **or** perform a
@@ -140,13 +140,13 @@ node packages/state/dist/bin/openhawkins-run.js \
 
 ### Interpreting the result
 
-| Field | Meaning |
-|-------|---------|
-| `events` | Number of domain events in the event store |
-| `auditEntries` | Number of entries in the keyed audit log |
-| `auditVerified` | `true` if the HMAC chain is intact; `false` indicates tampering or corruption |
+| Field           | Meaning                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
+| `events`        | Number of domain events in the event store                                      |
+| `auditEntries`  | Number of entries in the keyed audit log                                        |
+| `auditVerified` | `true` if the HMAC chain is intact; `false` indicates tampering or corruption   |
 | `auditBrokenAt` | (present only if `auditVerified` is `false`) The index of the first broken link |
-| `auditReason` | (present only if `auditVerified` is `false`) Human-readable failure reason |
+| `auditReason`   | (present only if `auditVerified` is `false`) Human-readable failure reason      |
 
 > **If `auditVerified` is `false`, do not start production runs.** Investigate whether the
 > backup itself was corrupted, whether the wrong Vault passphrase was used, or whether the
@@ -156,11 +156,11 @@ node packages/state/dist/bin/openhawkins-run.js \
 
 ## Recommended backup schedule and retention
 
-| Environment | Frequency | Retention | Notes |
-|-------------|-----------|-----------|-------|
-| **Production** | Every 4 hours + continuous streaming WAL archiving (if available) | 30 days daily, 7 days hourly | Use `sqlite3 .backup` or LVM/ZFS snapshots for near-instant consistency |
-| **Staging** | Daily | 7 days | Align with prod for validation |
-| **Development / local** | On-demand before schema migrations | 3 most recent | Manual `cp` is sufficient |
+| Environment             | Frequency                                                         | Retention                    | Notes                                                                   |
+| ----------------------- | ----------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------- |
+| **Production**          | Every 4 hours + continuous streaming WAL archiving (if available) | 30 days daily, 7 days hourly | Use `sqlite3 .backup` or LVM/ZFS snapshots for near-instant consistency |
+| **Staging**             | Daily                                                             | 7 days                       | Align with prod for validation                                          |
+| **Development / local** | On-demand before schema migrations                                | 3 most recent                | Manual `cp` is sufficient                                               |
 
 ### Automation tips
 

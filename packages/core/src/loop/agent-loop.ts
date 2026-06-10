@@ -85,9 +85,7 @@ export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise
     ...(cfg.traceId ? { traceId: cfg.traceId } : {}),
   };
 
-  const limiter = cfg.rateLimit
-    ? tokenBucket("agent-loop-model-call", cfg.rateLimit)
-    : null;
+  const limiter = cfg.rateLimit ? tokenBucket("agent-loop-model-call", cfg.rateLimit) : null;
   const logger = cfg.rateLimit?.logger ?? noopLogger;
 
   while (record.modelCalls.length < maxModelCalls) {

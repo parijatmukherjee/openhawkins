@@ -3,7 +3,8 @@ import { redact } from "../../src/security/redact.js";
 
 describe("redact fuzz", () => {
   it("never throws on random ASCII strings with embedded patterns", () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;':\",./<>?`~ \t\n\r";
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;':\",./<>?`~ \t\n\r";
     for (let i = 0; i < 200; i++) {
       let s = "";
       const len = Math.floor(Math.random() * 500) + 1;
@@ -11,7 +12,19 @@ describe("redact fuzz", () => {
         s += chars[Math.floor(Math.random() * chars.length)];
       }
       // pepper with known secret fragments
-      const fragments = ["sk-", "Bearer ", "AKIA", "AIza", "ghp_", "github_pat_", "sk_live_", "xoxb-", "eyJ", "-----BEGIN RSA PRIVATE KEY-----", "@example.com"];
+      const fragments = [
+        "sk-",
+        "Bearer ",
+        "AKIA",
+        "AIza",
+        "ghp_",
+        "github_pat_",
+        "sk_live_",
+        "xoxb-",
+        "eyJ",
+        "-----BEGIN RSA PRIVATE KEY-----",
+        "@example.com",
+      ];
       for (const f of fragments) {
         if (Math.random() < 0.3) {
           const pos = Math.floor(Math.random() * (s.length + 1));

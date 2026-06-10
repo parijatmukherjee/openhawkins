@@ -10,10 +10,7 @@ export interface TokenBucketOptions {
   refillRate: number; // tokens per second
 }
 
-export function tokenBucket(
-  key: string,
-  opts: TokenBucketOptions,
-): { allow(): boolean } {
+export function tokenBucket(key: string, opts: TokenBucketOptions): { allow(): boolean } {
   return {
     allow(): boolean {
       const now = Date.now();
