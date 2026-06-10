@@ -15,7 +15,10 @@ export class RedactingEventStore implements EventStore {
     await this.inner.append(redact(event) as DomainEvent);
   }
 
-  async read(sessionId: string): Promise<DomainEvent[]> {
-    return this.inner.read(sessionId);
+  async read(
+    sessionId: string,
+    opts?: { limit?: number; afterSeq?: number },
+  ): Promise<DomainEvent[]> {
+    return this.inner.read(sessionId, opts);
   }
 }

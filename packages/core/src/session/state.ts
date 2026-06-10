@@ -42,6 +42,6 @@ export function reduceEvent(state: SessionState, event: DomainEvent): SessionSta
   }
 }
 
-export function foldEvents(events: readonly DomainEvent[]): SessionState {
-  return events.reduce(reduceEvent, initialState());
+export function foldEvents(events: readonly DomainEvent[], state = initialState()): SessionState {
+  return events.reduce(reduceEvent, state);
 }

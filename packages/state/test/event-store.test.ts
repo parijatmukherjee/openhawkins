@@ -26,6 +26,32 @@ describe("SqliteEventStore (VINES)", () => {
     store.close();
   });
 
+  it("reads events in paginated chunks with limit and afterSeq", async () => {
+    const store = SqliteEventStore.open(":memory:");
+    for (let i = 0; i < 5; i++) {
+      await store.append({
+        type: "TurnStarted",
+        sessionId: "s-1",
+        turnId: `t${i}`,
+        input: `msg-${i}`,
+        at: i,
+      });
+    }
+    const chunk1 = await store.read("s-1", { limit: 2 });
+    expect(chunk1).toHaveLength(2);
+    expect((chunk1[0] as { turnId: string }).turnId).toBe("t0");
+
+    // seq is 1-based in SQLite AUTOINCREMENT; first two events are seq 1, 2
+    const chunk2 = await store.read("s-1", { limit: 2, afterSeq: 2 });
+    expect(chunk2).toHaveLength(2);
+    expect((chunk2[0] as { turnId: string }).turnId).toBe("t2");
+
+    const chunk3 = await store.read("s-1", { limit: 2, afterSeq: 4 });
+    expect(chunk3).toHaveLength(1);
+    expect((chunk3[0] as { turnId: string }).turnId).toBe("t4");
+    store.close();
+  });
+
   it("durably persists a session that replays to identical state after reopen", async () => {
     const path = dbPath();
 
