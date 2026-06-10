@@ -67,6 +67,7 @@ packages/desktop/
 ## Task 1: Project Setup — Vite + Electron Integration
 
 **Files:**
+
 - Create: `packages/desktop/vite.renderer.config.ts`
 - Create: `packages/desktop/electron-builder.json`
 - Modify: `packages/desktop/package.json`
@@ -117,10 +118,7 @@ export default defineConfig({
   "directories": {
     "output": "release"
   },
-  "files": [
-    "dist/**/*",
-    "package.json"
-  ],
+  "files": ["dist/**/*", "package.json"],
   "mac": {
     "category": "public.app-category.productivity",
     "target": ["dmg", "zip"]
@@ -195,7 +193,7 @@ export default {
       animation: {
         "voice-idle": "voice-idle 2s ease-in-out infinite",
         "radar-sweep": "radar-sweep 4s linear infinite",
-        "shimmer": "shimmer 1.5s linear infinite",
+        shimmer: "shimmer 1.5s linear infinite",
       },
       keyframes: {
         "voice-idle": {
@@ -253,6 +251,7 @@ git commit -m "chore(desktop): setup Vite + Electron + Tailwind build pipeline"
 ## Task 2: Electron Main Process — Frameless Window
 
 **Files:**
+
 - Create: `packages/desktop/src/main.ts`
 - Create: `packages/desktop/src/preload.ts`
 - Modify: `packages/desktop/src/renderer/index.html`
@@ -465,6 +464,7 @@ git commit -m "feat(desktop): Electron main process with frameless window + IPC 
 ## Task 3: Global Styles — Neon CSS Variables + Animations
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/styles/globals.css`
 - Create: `packages/desktop/src/renderer/styles/animations.css`
 
@@ -541,7 +541,9 @@ git commit -m "feat(desktop): Electron main process with frameless window + IPC 
     border: var(--panel-border);
     box-shadow: var(--panel-inner-glow), var(--glow-cyan);
     border-radius: 16px;
-    transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+    transition:
+      transform 200ms var(--ease-out),
+      box-shadow 200ms var(--ease-out);
   }
 
   .glass-panel:hover {
@@ -702,6 +704,7 @@ git commit -m "feat(desktop): add neon CSS variables, glass panel styles, and ke
 ## Task 4: Reusable UI Components — GlassPanel, NeonButton, StatusDot
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/ui/GlassPanel.tsx`
 - Create: `packages/desktop/src/renderer/components/ui/NeonButton.tsx`
 - Create: `packages/desktop/src/renderer/components/ui/StatusDot.tsx`
@@ -754,12 +757,7 @@ interface GlassPanelProps {
   onClick?: () => void;
 }
 
-export function GlassPanel({
-  children,
-  className = "",
-  glow = "cyan",
-  onClick,
-}: GlassPanelProps) {
+export function GlassPanel({ children, className = "", glow = "cyan", onClick }: GlassPanelProps) {
   const glowClass =
     glow === "cyan-strong"
       ? "shadow-[var(--panel-inner-glow),var(--glow-cyan-strong)]"
@@ -860,6 +858,7 @@ git commit -m "feat(desktop): add GlassPanel, NeonButton, StatusDot reusable com
 ## Task 5: Voice Waveform Component
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/ui/VoiceWaveform.tsx`
 - Create: `packages/desktop/src/renderer/hooks/useAudioAnalysis.ts`
 
@@ -948,13 +947,8 @@ export function VoiceWaveform() {
       />
 
       {/* Central text */}
-      <motion.div
-        className="relative z-10 text-center"
-        animate={{ opacity: isSpeaking ? 1 : 0.7 }}
-      >
-        <span className="text-4xl font-light tracking-tighter text-neon-cyan">
-          JARVIS
-        </span>
+      <motion.div className="relative z-10 text-center" animate={{ opacity: isSpeaking ? 1 : 0.7 }}>
+        <span className="text-4xl font-light tracking-tighter text-neon-cyan">JARVIS</span>
       </motion.div>
     </div>
   );
@@ -973,6 +967,7 @@ git commit -m "feat(desktop): implement VoiceWaveform with concentric rings + mo
 ## Task 6: Agent Radar HUD
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/ui/AgentRadar.tsx`
 
 **Context:** A circular radar display showing active agents as blips with connecting lines.
@@ -993,7 +988,14 @@ interface Agent {
 }
 
 const mockAgents: Agent[] = [
-  { id: "research", name: "Research", role: "research", status: "active", angle: 30, distance: 0.6 },
+  {
+    id: "research",
+    name: "Research",
+    role: "research",
+    status: "active",
+    angle: 30,
+    distance: 0.6,
+  },
   { id: "system", name: "System", role: "system", status: "busy", angle: 120, distance: 0.4 },
   { id: "weather", name: "Weather", role: "data", status: "active", angle: 210, distance: 0.7 },
   { id: "calendar", name: "Calendar", role: "data", status: "idle", angle: 300, distance: 0.5 },
@@ -1033,8 +1035,7 @@ export function AgentRadar() {
       <motion.div
         className="absolute top-1/2 left-1/2 w-1/2 h-px origin-left"
         style={{
-          background:
-            "linear-gradient(90deg, rgba(0,212,255,0.4) 0%, transparent 100%)",
+          background: "linear-gradient(90deg, rgba(0,212,255,0.4) 0%, transparent 100%)",
         }}
         animate={{ rotate: 360 }}
         transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
@@ -1091,6 +1092,7 @@ git commit -m "feat(desktop): implement AgentRadar HUD with blips, radar sweep, 
 ## Task 7: Task Board Component
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/dashboard/TaskBoard.tsx`
 
 **Context:** Real-time task tracking with neon-styled status indicators.
@@ -1217,6 +1219,7 @@ git commit -m "feat(desktop): implement TaskBoard with real-time status, progres
 ## Task 8: Agent Status Grid + Conversation Panel
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/dashboard/AgentStatusGrid.tsx`
 - Create: `packages/desktop/src/renderer/components/dashboard/ConversationPanel.tsx`
 
@@ -1290,7 +1293,12 @@ interface Message {
 
 const mockMessages: Message[] = [
   { id: "1", type: "user", text: "What's the weather like?", timestamp: "10:23 AM" },
-  { id: "2", type: "jarvis", text: "It's 72°F and sunny. Would you like me to open the weather app?", timestamp: "10:23 AM" },
+  {
+    id: "2",
+    type: "jarvis",
+    text: "It's 72°F and sunny. Would you like me to open the weather app?",
+    timestamp: "10:23 AM",
+  },
   { id: "3", type: "system", text: "Agent 'weather' dispatched", timestamp: "10:23 AM" },
   { id: "4", type: "user", text: "Yes, please", timestamp: "10:24 AM" },
   { id: "5", type: "jarvis", text: "Done. Calendar app opened.", timestamp: "10:24 AM" },
@@ -1315,9 +1323,7 @@ export function ConversationPanel() {
                 {mockMessages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${
-                      msg.type === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`max-w-3/4 px-3 py-2 rounded-lg text-sm ${
@@ -1364,6 +1370,7 @@ git commit -m "feat(desktop): add AgentStatusGrid and ConversationPanel componen
 ## Task 9: Dashboard Layout + Header
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/dashboard/DashboardLayout.tsx`
 - Create: `packages/desktop/src/renderer/components/dashboard/Header.tsx`
 
@@ -1389,9 +1396,7 @@ export function Header() {
         <h1 className="text-2xl font-light tracking-tight">
           {greeting}, <span className="text-neon-cyan">{userName}</span>
         </h1>
-        <p className="text-sm text-text-secondary mt-1">
-          All systems operational. 6 agents ready.
-        </p>
+        <p className="text-sm text-text-secondary mt-1">All systems operational. 6 agents ready.</p>
       </motion.div>
 
       <motion.div
@@ -1401,9 +1406,7 @@ export function Header() {
         transition={{ duration: 0.5, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
       >
         <div className="text-right">
-          <div className="text-sm font-mono text-neon-cyan">
-            {new Date().toLocaleTimeString()}
-          </div>
+          <div className="text-sm font-mono text-neon-cyan">{new Date().toLocaleTimeString()}</div>
           <div className="text-xs text-text-secondary">
             {new Date().toLocaleDateString(undefined, {
               weekday: "long",
@@ -1486,6 +1489,7 @@ git commit -m "feat(desktop): add DashboardLayout and Header with greeting + clo
 ## Task 10: Onboarding Flow
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/components/onboarding/OnboardingFlow.tsx`
 - Create: `packages/desktop/src/renderer/components/onboarding/WelcomeScreen.tsx`
 - Create: `packages/desktop/src/renderer/components/onboarding/LocaleSetup.tsx`
@@ -1714,6 +1718,7 @@ git commit -m "feat(desktop): add onboarding flow with WelcomeScreen, LocaleSetu
 ## Task 11: App Shell + Window Controls
 
 **Files:**
+
 - Create: `packages/desktop/src/renderer/App.tsx`
 - Create: `packages/desktop/src/renderer/main.tsx`
 - Create: `packages/desktop/src/renderer/components/WindowControls.tsx`
@@ -1797,7 +1802,7 @@ import "./styles/animations.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 ```
 
@@ -1813,6 +1818,7 @@ git commit -m "feat(desktop): add App shell with window controls and onboarding/
 ## Task 12: Final Integration + Tests
 
 **Files:**
+
 - Test: `packages/desktop/test/renderer/onboarding.test.tsx`
 - Test: `packages/desktop/test/renderer/components.test.tsx`
 
@@ -1890,6 +1896,7 @@ git commit -m "test(desktop): add component tests for GlassPanel, NeonButton, St
 ## Plan Self-Review
 
 **1. Spec coverage:**
+
 - ✅ Frameless window (Task 2)
 - ✅ Neon color system (Task 3)
 - ✅ Glassmorphism panels (Task 4)
@@ -1904,16 +1911,19 @@ git commit -m "test(desktop): add component tests for GlassPanel, NeonButton, St
 - ✅ Dashboard layout (Task 9)
 
 **2. Placeholder scan:**
+
 - ✅ No TBDs or TODOs in task descriptions
 - ✅ All code is complete (not "implement later")
 - ✅ No "add appropriate error handling" — specific error handling included where needed
 
 **3. Type consistency:**
+
 - ✅ `Status` type used consistently across StatusDot, AgentRadar, TaskBoard
 - ✅ `GlassPanelProps` interface matches usage in all components
 - ✅ `Agent` interface used in AgentRadar and AgentStatusGrid
 
 **4. Gate compliance:**
+
 - ✅ Tests for every major component
 - ✅ Build verification at each step
 - ✅ All code follows existing project patterns

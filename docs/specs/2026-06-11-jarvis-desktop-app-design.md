@@ -36,27 +36,25 @@ The interface should feel like **Jarvis from the Iron Man films** — a sentient
 
 ### Primary Palette
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `bg-deep` | `#0a0e1a` | Main background — deep space blue |
-| `bg-panel` | `rgba(10, 20, 40, 0.6)` | Glass panels — 40% opacity with backdrop blur |
-| `neon-cyan` | `#00d4ff` | Primary accent — buttons, active states, Jarvis voice |
-| `neon-cyan-dim` | `rgba(0, 212, 255, 0.3)` | Glow effects, inactive states |
-| `neon-teal` | `#00b4d8` | Secondary accent — gradients, hover states |
-| `text-primary` | `#e0f2f1` | Primary text — near-white with slight cyan tint |
-| `text-secondary` | `#607d8b` | Muted text — timestamps, labels |
-| `status-success` | `#00e5ff` | Task complete, agent healthy |
-| `status-warning` | `#ffab00` | Attention needed |
-| `status-error` | `#ff5252` | Agent failed, error state |
-| `status-idle` | `#455a64` | Inactive elements |
+| Token            | Hex                      | Usage                                                 |
+| ---------------- | ------------------------ | ----------------------------------------------------- |
+| `bg-deep`        | `#0a0e1a`                | Main background — deep space blue                     |
+| `bg-panel`       | `rgba(10, 20, 40, 0.6)`  | Glass panels — 40% opacity with backdrop blur         |
+| `neon-cyan`      | `#00d4ff`                | Primary accent — buttons, active states, Jarvis voice |
+| `neon-cyan-dim`  | `rgba(0, 212, 255, 0.3)` | Glow effects, inactive states                         |
+| `neon-teal`      | `#00b4d8`                | Secondary accent — gradients, hover states            |
+| `text-primary`   | `#e0f2f1`                | Primary text — near-white with slight cyan tint       |
+| `text-secondary` | `#607d8b`                | Muted text — timestamps, labels                       |
+| `status-success` | `#00e5ff`                | Task complete, agent healthy                          |
+| `status-warning` | `#ffab00`                | Attention needed                                      |
+| `status-error`   | `#ff5252`                | Agent failed, error state                             |
+| `status-idle`    | `#455a64`                | Inactive elements                                     |
 
 ### Glow Effects
 
 ```css
---glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3),
-             0 0 40px rgba(0, 212, 255, 0.1);
---glow-cyan-strong: 0 0 30px rgba(0, 212, 255, 0.5),
-                    0 0 60px rgba(0, 212, 255, 0.2);
+--glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3), 0 0 40px rgba(0, 212, 255, 0.1);
+--glow-cyan-strong: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 60px rgba(0, 212, 255, 0.2);
 --panel-border: 1px solid rgba(0, 212, 255, 0.15);
 --panel-inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 ```
@@ -73,14 +71,14 @@ The interface should feel like **Jarvis from the Iron Man films** — a sentient
 
 ### Scale
 
-| Token | Size | Weight | Tracking | Usage |
-|-------|------|--------|----------|-------|
-| `display-xl` | 48px | 300 | -0.02em | Main title ("JARVIS") |
-| `display-lg` | 32px | 400 | -0.01em | Section headers |
-| `heading` | 20px | 500 | 0 | Card titles |
-| `body` | 16px | 400 | 0 | General text |
-| `caption` | 13px | 400 | 0.02em | Labels, timestamps |
-| `mono` | 14px | 400 | 0 | Data, metrics |
+| Token        | Size | Weight | Tracking | Usage                 |
+| ------------ | ---- | ------ | -------- | --------------------- |
+| `display-xl` | 48px | 300    | -0.02em  | Main title ("JARVIS") |
+| `display-lg` | 32px | 400    | -0.01em  | Section headers       |
+| `heading`    | 20px | 500    | 0        | Card titles           |
+| `body`       | 16px | 400    | 0        | General text          |
+| `caption`    | 13px | 400    | 0.02em   | Labels, timestamps    |
+| `mono`       | 14px | 400    | 0        | Data, metrics         |
 
 ---
 
@@ -125,6 +123,7 @@ The interface should feel like **Jarvis from the Iron Man films** — a sentient
 The iconic Jarvis voice visualization — a central circular waveform that pulses when Jarvis speaks.
 
 **Design:**
+
 - Circular container (200-300px diameter)
 - Concentric rings that expand/contract with audio amplitude
 - Cyan glow that intensifies when speaking
@@ -132,10 +131,18 @@ The iconic Jarvis voice visualization — a central circular waveform that pulse
 - Idle state: slow, breathing pulse (2s cycle)
 
 **Animation:**
+
 ```css
 @keyframes voice-idle {
-  0%, 100% { transform: scale(1); opacity: 0.6; }
-  50% { transform: scale(1.05); opacity: 0.8; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
 }
 /* Speaking: driven by real-time audio analysis */
 /* Transition: scale(0.95) → scale(1) with ease-out */
@@ -146,6 +153,7 @@ The iconic Jarvis voice visualization — a central circular waveform that pulse
 A circular radar/scope showing active agents as blips.
 
 **Design:**
+
 - Circular container with concentric rings (like a radar scope)
 - Agent blips positioned by role (system at center, others orbiting)
 - Blip color: cyan (active), amber (busy), red (failed)
@@ -153,10 +161,15 @@ A circular radar/scope showing active agents as blips.
 - Sweeping radar line animation (subtle, 4s per rotation)
 
 **Animation:**
+
 ```css
 @keyframes radar-sweep {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 /* Duration: 4s linear infinite */
 ```
@@ -166,6 +179,7 @@ A circular radar/scope showing active agents as blips.
 Real-time task tracking with neon styling.
 
 **Design:**
+
 - Glass panel with `--panel-border` and `--glow-cyan`
 - Tasks as horizontal bars with status indicators
 - Status: pending (dim), running (pulsing cyan), completed (bright cyan), failed (red)
@@ -173,6 +187,7 @@ Real-time task tracking with neon styling.
 - Agent avatar + task name + duration
 
 **Animation:**
+
 - New task: `scale(0.95) + opacity: 0` → `scale(1) + opacity: 1` (200ms ease-out)
 - Completion: brief flash glow (300ms)
 - Stagger: 80ms between consecutive task entries
@@ -182,6 +197,7 @@ Real-time task tracking with neon styling.
 Compact grid showing all registered agents.
 
 **Design:**
+
 - Small cards (80x100px) arranged in a grid
 - Agent icon + name + status dot
 - Status dot: 8px circle, cyan (healthy), red (down), amber (warning)
@@ -193,6 +209,7 @@ Compact grid showing all registered agents.
 Collapsible bottom panel showing the conversation thread.
 
 **Design:**
+
 - Collapsible via drag handle or click
 - User messages: right-aligned, subtle panel
 - Jarvis messages: left-aligned, cyan glow border
@@ -206,27 +223,32 @@ Collapsible bottom panel showing the conversation thread.
 ### First-Time Experience
 
 **Step 1: Welcome Screen**
+
 - Full-screen dark background
 - Central "JARVIS" logo with slow pulse animation
 - Tagline: "Your Personal AI Assistant"
 - Single "Initialize" button with strong cyan glow
 
 **Step 2: Locale Detection**
+
 - Auto-detect system locale
 - Show detected language with confirm/change option
 - Visual: spinning globe with highlighted region
 
 **Step 3: Voice Calibration**
+
 - "Please speak the following phrase..."
 - Real-time waveform visualization during recording
 - Confidence meter showing voice recognition quality
 
 **Step 4: Agent Selection**
+
 - "Which agents would you like to enable?"
 - Toggle grid of agent cards (Research, System, Vision, etc.)
 - Each card shows: icon, description, capability list
 
 **Step 5: Completion**
+
 - "JARVIS is ready."
 - Brief animation of all components initializing
 - Auto-transition to main dashboard
@@ -237,14 +259,14 @@ Collapsible bottom panel showing the conversation thread.
 
 ### Global Transitions
 
-| Element | Enter | Exit | Duration | Easing |
-|---------|-------|------|----------|--------|
-| Panel | scale(0.95), opacity 0 | scale(1), opacity 1 | 200ms | ease-out |
-| Card | translateY(8px), opacity 0 | translateY(0), opacity 1 | 250ms | ease-out |
-| Modal | scale(0.95), opacity 0 | scale(1), opacity 1 | 300ms | cubic-bezier(0.23, 1, 0.32, 1) |
-| Toast | translateX(100%), opacity 0 | translateX(0), opacity 1 | 400ms | cubic-bezier(0.23, 1, 0.32, 1) |
-| Task item | scale(0.95), opacity 0 | scale(1), opacity 1 | 200ms | ease-out |
-| Status change | — | flash glow | 300ms | ease |
+| Element       | Enter                       | Exit                     | Duration | Easing                         |
+| ------------- | --------------------------- | ------------------------ | -------- | ------------------------------ |
+| Panel         | scale(0.95), opacity 0      | scale(1), opacity 1      | 200ms    | ease-out                       |
+| Card          | translateY(8px), opacity 0  | translateY(0), opacity 1 | 250ms    | ease-out                       |
+| Modal         | scale(0.95), opacity 0      | scale(1), opacity 1      | 300ms    | cubic-bezier(0.23, 1, 0.32, 1) |
+| Toast         | translateX(100%), opacity 0 | translateX(0), opacity 1 | 400ms    | cubic-bezier(0.23, 1, 0.32, 1) |
+| Task item     | scale(0.95), opacity 0      | scale(1), opacity 1      | 200ms    | ease-out                       |
+| Status change | —                           | flash glow               | 300ms    | ease                           |
 
 ### Micro-Interactions
 

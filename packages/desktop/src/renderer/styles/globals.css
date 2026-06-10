@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core palette */
+    --bg-deep: #0a0e1a;
+    --bg-panel: rgba(10, 20, 40, 0.6);
+    --neon-cyan: #00d4ff;
+    --neon-teal: #00b4d8;
+    --text-primary: #e0f2f1;
+    --text-secondary: #607d8b;
+
+    /* Status colors */
+    --status-success: #00e5ff;
+    --status-warning: #ffab00;
+    --status-error: #ff5252;
+    --status-idle: #455a64;
+
+    /* Glow effects */
+    --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3), 0 0 40px rgba(0, 212, 255, 0.1);
+    --glow-cyan-strong: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 60px rgba(0, 212, 255, 0.2);
+    --glow-error: 0 0 20px rgba(255, 82, 82, 0.3);
+
+    /* Panel styling */
+    --panel-border: 1px solid rgba(0, 212, 255, 0.15);
+    --panel-inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    --panel-bg: rgba(10, 20, 40, 0.6);
+
+    /* Easing curves */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  body {
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: "Geist", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.2);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 212, 255, 0.4);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: var(--panel-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: var(--panel-border);
+    box-shadow: var(--panel-inner-glow), var(--glow-cyan);
+    border-radius: 16px;
+    transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  }
+
+  .glass-panel:hover {
+    box-shadow: var(--panel-inner-glow), var(--glow-cyan-strong);
+  }
+
+  .neon-button {
+    background: rgba(0, 212, 255, 0.1);
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    color: var(--neon-cyan);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 160ms var(--ease-out);
+  }
+
+  .neon-button:hover {
+    background: rgba(0, 212, 255, 0.2);
+    box-shadow: var(--glow-cyan);
+  }
+
+  .neon-button:active {
+    transform: scale(0.97);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .status-dot--success {
+    background: var(--status-success);
+    box-shadow: 0 0 8px var(--status-success);
+  }
+  .status-dot--warning {
+    background: var(--status-warning);
+    box-shadow: 0 0 8px var(--status-warning);
+  }
+  .status-dot--error {
+    background: var(--status-error);
+    box-shadow: 0 0 8px var(--status-error);
+  }
+  .status-dot--idle {
+    background: var(--status-idle);
+  }
+}
