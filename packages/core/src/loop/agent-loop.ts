@@ -7,6 +7,9 @@ import type { AcceptPolicy, AcceptContext, TurnRecord } from "./turn.js";
 import type { MemoryStore } from "../memory.js";
 import type { MetricsCollector } from "../observability/metrics.js";
 import { noopMetricsCollector } from "../observability/metrics.js";
+import type { Logger } from "../observability/logger.js";
+import { noopLogger } from "../observability/logger.js";
+import { tokenBucket } from "../util/rate-limiter.js";
 
 // Tools are heterogeneous in their <A,R> type parameters; the loop only reads
 // name/description/args, so it stores them with erased type variables (same
@@ -36,6 +39,12 @@ export interface AgentLoopConfig {
   traceId?: string;
   /** Metrics collector for turn lifecycle and latency telemetry. */
   metrics?: MetricsCollector;
+  /** Optional rate limiting for model calls. */
+  rateLimit?: {
+    capacity: number;
+    refillRate: number;
+    logger?: Logger;
+  };
 }
 
 /**
@@ -76,7 +85,19 @@ export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise
     ...(cfg.traceId ? { traceId: cfg.traceId } : {}),
   };
 
+  const limiter = cfg.rateLimit
+    ? tokenBucket("agent-loop-model-call", cfg.rateLimit)
+    : null;
+  const logger = cfg.rateLimit?.logger ?? noopLogger;
+
   while (record.modelCalls.length < maxModelCalls) {
+    if (limiter && !limiter.allow()) {
+      logger.log("warn", "rate-limited", {
+        detail: `model call rate limit exceeded (capacity=${cfg.rateLimit!.capacity}, refillRate=${cfg.rateLimit!.refillRate})`,
+      });
+      await new Promise((r) => setTimeout(r, 100));
+      continue;
+    }
     const out = await cfg.adapter.generate({ messages, tools: toolSchemas });
     record.modelCalls.push({
       request: messages.map((m) => ({ ...m })),

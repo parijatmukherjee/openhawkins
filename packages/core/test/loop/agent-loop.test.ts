@@ -8,6 +8,7 @@ import type { AgentGrant } from "../../src/security/capability.js";
 import type { AcceptPolicy } from "../../src/loop/turn.js";
 
 import type { MetricsCollector } from "../../src/observability/metrics.js";
+import type { Logger } from "../../src/observability/logger.js";
 
 const grant: AgentGrant = {
   agentId: "probe-agent",
@@ -234,5 +235,38 @@ describe("runAgentTurn (native tool-calling round-trip)", () => {
     expect(counters.some((c) => c.name === "TurnStarted" && c.value === 1)).toBe(true);
     expect(counters.some((c) => c.name === "TurnFailed" && c.value === 1)).toBe(true);
     expect(counters.some((c) => c.name === "TurnCompleted")).toBe(false);
+  });
+
+  it("pauses and logs warning when model call rate is exceeded", async () => {
+    const warnings: string[] = [];
+    const logger: Logger = {
+      log(level, event, fields) {
+        if (level === "warn" && event === "rate-limited") {
+          warnings.push(String(fields?.detail));
+        }
+      },
+    };
+    const adapter = new ScriptedAdapter([
+      { content: "", toolCalls: [{ id: "oc-1", tool: "disk_free", args: { path: tmpdir() } }] },
+      { content: "second", toolCalls: [] },
+    ]);
+    const before = Date.now();
+    const record = await runAgentTurn(
+      {
+        adapter,
+        registry: registryWithDiskFree(),
+        grant,
+        tools: [diskFreeTool],
+        policy: acceptAlways,
+        rateLimit: { capacity: 1, refillRate: 10, logger },
+      },
+      "hi",
+    );
+    const elapsed = Date.now() - before;
+    expect(record.accepted).toBe(true);
+    expect(adapter.calls).toBe(2);
+    expect(elapsed).toBeGreaterThanOrEqual(80);
+    expect(warnings.length).toBeGreaterThanOrEqual(1);
+    expect(warnings[0]).toMatch(/rate limit exceeded/);
   });
 });
