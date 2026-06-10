@@ -1,4 +1,4 @@
-/** The fixed phases of the working process (CLAUDE.md spine). */
+/** The fixed phases of the working process (AGENT.md spine). */
 export type Phase = "Research" | "Plan" | "Tasks" | "Execute" | "Validate" | "Present";
 
 /** How a phase decides it is complete. `soft` pauses for an operator override;
@@ -19,7 +19,7 @@ export interface PlaybookManifest {
   maxReplans: number;
 }
 
-/** The built-in default Playbook: the CLAUDE.md Research->...->Present spine. */
+/** The built-in default Playbook: the AGENT.md Research->...->Present spine. */
 export const DEFAULT_MANIFEST: PlaybookManifest = {
   phases: [
     { phase: "Research", gate: "soft" },

@@ -71,13 +71,13 @@ existing primitives rather than duplicating them:
 
 Each file has one responsibility and a small, testable surface.
 
-| File                   | Responsibility                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `playbook/manifest.ts` | `PlaybookManifest` type (ordered phases; each phase names its gate kind + `onFail` target + soft/hard flag) and the built-in **default manifest** (the CLAUDE.md spine). |
-| `playbook/events.ts`   | The new `PhaseEvent` `DomainEvent` variants (§3.3) and their reducer contribution.                                                                                       |
-| `playbook/machine.ts`  | `PlaybookMachine` — a **pure** function from (current phase, gate verdict) to the next phase + the event(s) to emit. No IO. Drives both forward and fail→replan edges.   |
-| `playbook/gates.ts`    | The `PhaseGate` interface and concrete gates: `ValidateGate` (calls an injected predicate; default = run the repo gate), and `SoftGate` (returns `needs-operator`).      |
-| `playbook/runner.ts`   | `PlaybookRun` — the single-writer driver: calls gates, asks the machine, commits events, writes audit, enforces the override capability and the replan budget.           |
+| File                   | Responsibility                                                                                                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `playbook/manifest.ts` | `PlaybookManifest` type (ordered phases; each phase names its gate kind + `onFail` target + soft/hard flag) and the built-in **default manifest** (the AGENT.md spine). |
+| `playbook/events.ts`   | The new `PhaseEvent` `DomainEvent` variants (§3.3) and their reducer contribution.                                                                                      |
+| `playbook/machine.ts`  | `PlaybookMachine` — a **pure** function from (current phase, gate verdict) to the next phase + the event(s) to emit. No IO. Drives both forward and fail→replan edges.  |
+| `playbook/gates.ts`    | The `PhaseGate` interface and concrete gates: `ValidateGate` (calls an injected predicate; default = run the repo gate), and `SoftGate` (returns `needs-operator`).     |
+| `playbook/runner.ts`   | `PlaybookRun` — the single-writer driver: calls gates, asks the machine, commits events, writes audit, enforces the override capability and the replan budget.          |
 
 ### 3.2 The phase machine
 

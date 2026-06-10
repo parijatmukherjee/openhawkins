@@ -49,6 +49,6 @@ lands with the plugin SDK (S4–S7), not the core.
 
 **Consequences:** A new component — the Playbook / process engine — enters the build
 order (targeted around the orchestrator, S3, or a thin core layer earlier). Until it
-ships, the process is followed as documented practice (`CLAUDE.md`), with the
+ships, the process is followed as documented practice (`AGENT.md`), with the
 Validate/Test phase already machine-enforced by the CI gate (build + lint + format +
 coverage ≥99% + the required `docker-gate`).
