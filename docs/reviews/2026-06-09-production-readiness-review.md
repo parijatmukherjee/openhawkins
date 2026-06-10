@@ -81,15 +81,27 @@ Ordered by leverage (foundational first):
    - **A7b — remaining swallow points (future).** (a) Instrument the markdownify `ConverterRegistry` degrade-to-fallback warnings once markdownify is wired into the agent path (F-H6) — it will take a structural log-sink, since markdownify must not import `core`; (b) thread the logger through `buildProbeAgent`/`bin/ask.ts` (the no-playbook vertical-slice path).
 8. **A8 — Input hardening (F-M2) + citation fix (F-M3) ✅ DONE (PR pending).** F-M2 closed: CSV column width via `reduce`; `ConverterRegistry` `maxInputChars` ceiling; XML depth cap. F-M3 closed: `verifyCitations` extracts the value at the exact `field` path (dot-notation) instead of recursively searching the whole payload; `field` is optional on the schema but the prompt and scripted model always emit it for numeric claims; a regression test proves the spoofing vector (value present elsewhere in payload but not at the claimed field) is rejected.
 
-### Track B — scale-topology re-architecture (roadmap; design spec first, no code until approved)
+### Track B — personal assistant, local-first, multi-device sync (design spec written, pending implementation)
 
-A re-architecture for the millions bar (F-C5, F-H4, multi-tenancy), to be brainstormed into its own spec → decomposed roadmap:
+**Revised vision (2026-06-10):** OpenHawkins is **one person's personal assistant**, not a SaaS platform. Track B is not about scaling to millions of users — it is about making the user's brain (one Vault, one event store, one VECNA memory graph) available on **all their devices** (PC, laptop, phone) without ever touching a cloud server.
 
-- **Stateless orchestration tier** (N replicas behind a load balancer) rehydrating session/playbook state from the durable log (the `foldEvents` machinery already exists).
-- **Externalized, horizontally-scalable state** behind the existing `SqlDriver` port (managed Postgres/partitioned event store), replacing embedded SQLite for the hosted profile; keep the single binary as a self-host profile.
-- **Queue/worker tier** for the long-running, model-bound agent turns, with admission control + the promised concurrency scheduler.
-- **Multi-tenancy** threaded through every event, audit entry, grant, tool context, and memory fragment (composite `tenantId`+`sessionId`, row-level isolation, per-tenant rate limits), plus encryption-at-rest and a crypto-shredding erasure model compatible with the append-only audit (GDPR).
-- **Real capability confinement** (the deferred S6 process/OS sandbox) before any untrusted multi-tenant tool execution; invert scope matching to deny-by-default.
+**Core principles:**
+1. **One brain, multiple devices.** The same VECNA memory, the same audit chain, the same tool registry — synchronized across all approved devices.
+2. **Local-first, always.** All data stays on the user's devices. Sync is device-to-device over the local network (Wi-Fi / LAN). No cloud server, no relay, no third-party storage.
+3. **Works offline.** Each device has a full copy of the brain. Network absence is normal, not an error. Changes sync when devices reconnect.
+4. **Battery-aware, capability-aware.** The phone handles notifications and quick queries. The PC handles heavy document processing. The laptop handles code. The system routes work to the right device.
+5. **User-controlled device approval.** The user explicitly approves each device. A device cannot join the brain without the user's consent on an already-approved device.
+6. **End-to-end encrypted sync.** Sync traffic is encrypted with keys derived from the Vault passphrase. The sync network is trustless — even devices on the same LAN cannot read each other's sync data.
+
+**Track B subsystems (spec: [`docs/specs/2026-06-10-track-b-personal-assistant.md`](../specs/2026-06-10-track-b-personal-assistant.md)):**
+
+| # | Subsystem | What it is | Status |
+|---|-----------|-----------|--------|
+| B1 | **Device Identity & Approval** | Pairing flow (QR code). Ed25519 keypairs. User approves new devices. Vault becomes a sync group. | 🟡 SPEC DONE |
+| B2 | **Local-First Data Architecture** | SQLite per device + CRDT/event-log sync. VECNA memory replicates. Event store syncs. | 🔴 PENDING |
+| B3 | **Device Discovery & Sync Network** | mDNS/Bonjour on LAN. Noise protocol encrypted sync. Master device election. | 🔴 PENDING |
+| B4 | **Cross-Device Task Scheduling** | Route tasks to best device. Battery-aware. Offline queueing. | 🔴 PENDING |
+| B5 | **Device-Level Capability Grants** | User grants capabilities per device. | 🔴 PENDING |
 
 ### Sequencing note
 
