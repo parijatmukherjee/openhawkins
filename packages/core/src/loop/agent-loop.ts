@@ -5,6 +5,8 @@ import type { AgentGrant } from "../security/capability.js";
 import { toJsonSchema } from "../tools/to-json-schema.js";
 import type { AcceptPolicy, AcceptContext, TurnRecord } from "./turn.js";
 import type { MemoryStore } from "../memory.js";
+import type { MetricsCollector } from "../observability/metrics.js";
+import { noopMetricsCollector } from "../observability/metrics.js";
 
 // Tools are heterogeneous in their <A,R> type parameters; the loop only reads
 // name/description/args, so it stores them with erased type variables (same
@@ -32,6 +34,8 @@ export interface AgentLoopConfig {
   memory?: MemoryStore;
   /** Correlation ID propagated through model calls, tool calls, and audit entries. */
   traceId?: string;
+  /** Metrics collector for turn lifecycle and latency telemetry. */
+  metrics?: MetricsCollector;
 }
 
 /**
@@ -44,6 +48,8 @@ export interface AgentLoopConfig {
 export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise<TurnRecord> {
   const policy = cfg.policy ?? acceptAlways;
   const maxModelCalls = cfg.maxModelCalls ?? 6;
+  const metrics = cfg.metrics ?? noopMetricsCollector;
+  metrics.increment("TurnStarted");
   const ctx: ToolContext = {
     agentId: cfg.grant.agentId,
     ...(cfg.traceId ? { traceId: cfg.traceId } : {}),
@@ -101,6 +107,7 @@ export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise
       if (decision.flagged) {
         record.flagged = decision.flagged;
       }
+      metrics.increment("TurnCompleted");
       return record;
     }
 
@@ -110,5 +117,6 @@ export async function runAgentTurn(cfg: AgentLoopConfig, input: string): Promise
   }
 
   // Budget exhausted without an accepted answer — a grounded failure, not a guess.
+  metrics.increment("TurnFailed");
   return record;
 }

@@ -187,4 +187,50 @@ describe("runAgentTurn (native tool-calling round-trip)", () => {
 
     expect((capturedCtx as { traceId?: string }).traceId).toBe(traceId);
   });
+
+  it("increments TurnStarted and TurnCompleted on a successful turn", async () => {
+    const counters: { name: string; value: number }[] = [];
+    const metrics: MetricsCollector = {
+      increment: (name, value = 1) => void counters.push({ name, value: value ?? 1 }),
+      histogram() {},
+    };
+    const adapter = new ScriptedAdapter([{ content: "hello", toolCalls: [] }]);
+    const record = await runAgentTurn(
+      { adapter, registry: registryWithDiskFree(), grant, tools: [diskFreeTool], metrics },
+      "hi",
+    );
+    expect(record.accepted).toBe(true);
+    expect(counters.some((c) => c.name === "TurnStarted" && c.value === 1)).toBe(true);
+    expect(counters.some((c) => c.name === "TurnCompleted" && c.value === 1)).toBe(true);
+    expect(counters.some((c) => c.name === "TurnFailed")).toBe(false);
+  });
+
+  it("increments TurnFailed when the turn ends ungrounded", async () => {
+    const counters: { name: string; value: number }[] = [];
+    const metrics: MetricsCollector = {
+      increment: (name, value = 1) => void counters.push({ name, value: value ?? 1 }),
+      histogram() {},
+    };
+    const neverAccept: AcceptPolicy = { evaluate: () => ({ accept: false, correction: "again" }) };
+    const adapter = new ScriptedAdapter([
+      { content: "guess 1", toolCalls: [] },
+      { content: "guess 2", toolCalls: [] },
+    ]);
+    const record = await runAgentTurn(
+      {
+        adapter,
+        registry: registryWithDiskFree(),
+        grant,
+        tools: [diskFreeTool],
+        policy: neverAccept,
+        maxModelCalls: 2,
+        metrics,
+      },
+      "disk?",
+    );
+    expect(record.accepted).toBe(false);
+    expect(counters.some((c) => c.name === "TurnStarted" && c.value === 1)).toBe(true);
+    expect(counters.some((c) => c.name === "TurnFailed" && c.value === 1)).toBe(true);
+    expect(counters.some((c) => c.name === "TurnCompleted")).toBe(false);
+  });
 });
