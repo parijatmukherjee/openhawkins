@@ -8,7 +8,7 @@
 > `docker-gate`) · **Tests:** 623 passing / 1 skipped, **99.53% coverage** (gate floor 99%).
 > **Zero-Flaw Campaign: 24/24 ✅**
 > **S3 Nexus Orchestrator: IMPLEMENTED ✅**
-> **Desktop App (Electron): DESIGN IN PROGRESS**
+> **Desktop App (Electron): MERGED ✅**
 
 ---
 
@@ -66,7 +66,7 @@ integration); `ask`/`run` CLIs + eval harness. Specs: `docs/specs/2026-06-05-S1-
 
 ## 4. In flight
 
-**(nothing)** — all planned work is either done or blocked on a design spec.
+**(nothing)** — all planned work is done.
 
 ## 5. What's next
 
