@@ -1,22 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassPanel } from "../ui/GlassPanel";
 import { StatusDot } from "../ui/StatusDot";
-
-interface Task {
-  id: string;
-  agentId: string;
-  description: string;
-  status: "pending" | "running" | "completed" | "failed";
-  progress?: number;
-  duration?: string;
-}
-
-const mockTasks: Task[] = [
-  { id: "1", agentId: "weather", description: "Fetching weather data", status: "running", progress: 65, duration: "1.2s" },
-  { id: "2", agentId: "calendar", description: "Loading calendar events", status: "completed", duration: "0.8s" },
-  { id: "3", agentId: "research", description: "Web search: AI trends 2025", status: "pending" },
-  { id: "4", agentId: "system", description: "Opening Calendar app", status: "completed", duration: "0.3s" },
-];
+import { useNexus } from "../../contexts/NexusContext";
+import type { Task } from "@openjarvis/jarvis/nexus";
 
 const statusLabels = {
   pending: "Pending",
@@ -26,6 +13,13 @@ const statusLabels = {
 };
 
 export function TaskBoard() {
+  const nexus = useNexus();
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    nexus.getTasks().then(setTasks);
+  }, [nexus]);
+
   return (
     <GlassPanel className="p-6 h-full">
       <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
@@ -35,7 +29,7 @@ export function TaskBoard() {
 
       <div className="space-y-3 max-h-80 overflow-y-auto">
         <AnimatePresence>
-          {mockTasks.map((task, index) => (
+          {tasks.map((task, index) => (
             <motion.div
               key={task.id}
               initial={{ opacity: 0, scale: 0.95, y: 8 }}
@@ -81,19 +75,19 @@ export function TaskBoard() {
 
               <p className="text-sm text-text-secondary mb-2">{task.description}</p>
 
-              {task.progress !== undefined && (
+              {task.status === "running" && (
                 <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <motion.div
                     className="h-full rounded-full bg-gradient-to-r from-neon-teal to-neon-cyan"
                     initial={{ width: 0 }}
-                    animate={{ width: `${task.progress}%` }}
+                    animate={{ width: `${Math.min(((task.durationMs ?? 0) / 2000) * 100, 95)}%` }}
                     transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
                   />
                 </div>
               )}
 
-              {task.duration && (
-                <span className="text-xs text-text-secondary mt-1 block">{task.duration}</span>
+              {task.durationMs && task.status !== "running" && (
+                <span className="text-xs text-text-secondary mt-1 block">{`${task.durationMs}ms`}</span>
               )}
             </motion.div>
           ))}
