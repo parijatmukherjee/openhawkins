@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./nexus": {
+      "types": "./dist/nexus/index.d.ts",
+      "import": "./dist/nexus/index.js"
     }
   },
   "scripts": {

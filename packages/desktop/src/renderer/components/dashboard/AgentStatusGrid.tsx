@@ -1,31 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GlassPanel } from "../ui/GlassPanel";
 import { StatusDot } from "../ui/StatusDot";
 import { AgentDetailModal } from "../AgentDetailModal";
-
-interface AgentInfo {
-  id: string;
-  name: string;
-  role: string;
-  status: "active" | "busy" | "failed" | "idle";
-  description: string;
-  capabilities: string[];
-  lastActivity: string;
-  tasksCompleted: number;
-}
-
-const agents: AgentInfo[] = [
-  { id: "research", name: "Research", role: "Research", status: "active", description: "Web search and information gathering", capabilities: ["search", "browse", "summarize"], lastActivity: "2m ago", tasksCompleted: 142 },
-  { id: "system", name: "System", role: "System", status: "busy", description: "System operations and file management", capabilities: ["shell", "fs:read", "fs:write"], lastActivity: "now", tasksCompleted: 89 },
-  { id: "weather", name: "Weather", role: "Data", status: "active", description: "Weather data retrieval and forecasts", capabilities: ["weather:fetch", "location"], lastActivity: "5m ago", tasksCompleted: 256 },
-  { id: "calendar", name: "Calendar", role: "Data", status: "idle", description: "Calendar events and scheduling", capabilities: ["calendar:read", "calendar:write", "reminder"], lastActivity: "1h ago", tasksCompleted: 67 },
-  { id: "browser", name: "Browser", role: "Browser", status: "failed", description: "Web browser automation", capabilities: ["browse", "click", "screenshot"], lastActivity: "3h ago", tasksCompleted: 34 },
-  { id: "vision", name: "Vision", role: "Vision", status: "active", description: "Visual recognition and screen analysis", capabilities: ["detect", "ocr", "classify"], lastActivity: "1m ago", tasksCompleted: 198 },
-];
+import { useNexus } from "../../contexts/NexusContext";
+import type { AgentView } from "../../lib/nexus-bridge";
 
 export function AgentStatusGrid() {
-  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
+  const nexus = useNexus();
+  const [agents, setAgents] = useState<AgentView[]>([]);
+  const [selectedAgent, setSelectedAgent] = useState<AgentView | null>(null);
+
+  useEffect(() => {
+    nexus.getAgents().then(setAgents);
+  }, [nexus]);
 
   return (
     <>

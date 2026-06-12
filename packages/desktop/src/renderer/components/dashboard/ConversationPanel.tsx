@@ -1,24 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassPanel } from "../ui/GlassPanel";
-
-interface Message {
-  id: string;
-  type: "user" | "jarvis" | "system";
-  text: string;
-  timestamp: string;
-}
-
-const mockMessages: Message[] = [
-  { id: "1", type: "user", text: "What's the weather like?", timestamp: "10:23 AM" },
-  { id: "2", type: "jarvis", text: "It's 72°F and sunny. Would you like me to open the weather app?", timestamp: "10:23 AM" },
-  { id: "3", type: "system", text: "Agent 'weather' dispatched", timestamp: "10:23 AM" },
-  { id: "4", type: "user", text: "Yes, please", timestamp: "10:24 AM" },
-  { id: "5", type: "jarvis", text: "Done. Calendar app opened.", timestamp: "10:24 AM" },
-];
+import { useNexus } from "../../contexts/NexusContext";
+import type { MessageView } from "../../lib/nexus-bridge";
 
 export function ConversationPanel() {
+  const nexus = useNexus();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [messages, setMessages] = useState<MessageView[]>([]);
+
+  useEffect(() => {
+    nexus.getMessages().then(setMessages);
+  }, [nexus]);
 
   return (
     <div className="relative">
@@ -33,15 +26,13 @@ export function ConversationPanel() {
           >
             <GlassPanel className="p-4 mb-2 max-h-64 overflow-y-auto">
               <div className="space-y-3">
-                {mockMessages.map((msg) => (
+                {messages.map((msg) => (
                   <div
                     key={msg.id}
-                    className={`flex ${
-                      msg.type === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${msg.type === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[75%] px-3 py-2 rounded-lg text-sm ${
+                      className={`max-w-3/4 px-3 py-2 rounded-lg text-sm ${
                         msg.type === "user"
                           ? "bg-neon-cyan/10 border border-neon-cyan/20"
                           : msg.type === "jarvis"
