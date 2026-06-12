@@ -95,4 +95,13 @@ describe("Lifecycle Hooks", () => {
     engine.state.currentPhase = "execute";
     await expect(registry.run("pre-phase", engine.state)).resolves.toBeUndefined();
   });
+
+  it("triggers default post-phase validate hook", async () => {
+    const registry = new HookRegistry();
+    installDefaultHooks(registry);
+
+    const engine = new ProcessEngine();
+    engine.state.currentPhase = "validate";
+    await expect(registry.run("post-phase", engine.state)).resolves.toBeUndefined();
+  });
 });
