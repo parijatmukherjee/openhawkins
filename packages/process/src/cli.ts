@@ -10,9 +10,12 @@ export function createCliEngine(args: string[]): ProcessEngine {
   return engine;
 }
 
-export async function runCli(args: string[]): Promise<void> {
+export async function runCli(
+  args: string[],
+  engineFactory: typeof createCliEngine = createCliEngine,
+): Promise<void> {
   const phase = args.find((a) => a.startsWith("--phase="))?.split("=")[1];
-  const engine = createCliEngine(args);
+  const engine = engineFactory(args);
 
   if (phase) {
     await engine.runPhase(phase);
